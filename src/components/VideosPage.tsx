@@ -1,21 +1,49 @@
 import { ArrowLeft, Play } from 'lucide-react';
 import { useState } from 'react';
 import Header from './Header';
-import type { Video, Topic } from '../App';
+import type { Video, Topic, Field } from '../App';
 import { convertToEmbedUrl } from '../utils/videoUtils';
 
 type VideosPageProps = {
   videos: Video[];
   topics: Topic[];
+  fields: Field[];
   navigateTo: (page: string) => void;
 };
 
-export default function VideosPage({ videos, topics, navigateTo }: VideosPageProps) {
+export default function VideosPage({ videos, topics, fields, navigateTo }: VideosPageProps) {
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'nursery' | 'kindergarten'>('all');
 
   const getTopicTitle = (topicId: string) => {
     return topics.find(t => t.id === topicId)?.title || 'Không rõ';
   };
+
+  const getVideoLabel = (video: Video) => {
+    if (video.topicId) {
+      return getTopicTitle(video.topicId);
+    } else if (video.field) {
+      return video.field;
+    }
+    return 'Không rõ';
+  };
+
+  const filteredVideos = videos.filter(video => {
+    if (selectedCategory === 'all') return true;
+    
+    // Nếu video thuộc topic
+    if (video.topicId) {
+      const topic = topics.find(t => t.id === video.topicId);
+      return topic?.category === selectedCategory;
+    }
+    
+    // Nếu video thuộc field
+    if (video.field) {
+      return video.category === selectedCategory;
+    }
+    
+    return false;
+  });
 
   return (
     <div className="min-h-screen pt-16 md:pt-20">
@@ -23,13 +51,47 @@ export default function VideosPage({ videos, topics, navigateTo }: VideosPagePro
       <Header title="Video bài giảng" navigateTo={navigateTo} showNav={false} showBackButton={true} />
 
       <div className="container mx-auto px-4 py-8 md:py-12 max-w-7xl">
-        {videos.length === 0 ? (
+        {/* Category Filter */}
+        <div className="flex gap-2 md:gap-4 mb-6 md:mb-8 flex-wrap">
+          <button
+            onClick={() => setSelectedCategory('all')}
+            className={`px-4 md:px-6 py-2 md:py-3 rounded-lg transition ${
+              selectedCategory === 'all'
+                ? 'bg-purple-600 text-white shadow-lg'
+                : 'bg-white text-gray-700 hover:bg-purple-50 shadow'
+            }`}
+          >
+            Tất cả
+          </button>
+          <button
+            onClick={() => setSelectedCategory('nursery')}
+            className={`px-4 md:px-6 py-2 md:py-3 rounded-lg transition ${
+              selectedCategory === 'nursery'
+                ? 'bg-purple-600 text-white shadow-lg'
+                : 'bg-white text-gray-700 hover:bg-purple-50 shadow'
+            }`}
+          >
+            Nhà trẻ
+          </button>
+          <button
+            onClick={() => setSelectedCategory('kindergarten')}
+            className={`px-4 md:px-6 py-2 md:py-3 rounded-lg transition ${
+              selectedCategory === 'kindergarten'
+                ? 'bg-purple-600 text-white shadow-lg'
+                : 'bg-white text-gray-700 hover:bg-purple-50 shadow'
+            }`}
+          >
+            Mẫu giáo
+          </button>
+        </div>
+
+        {filteredVideos.length === 0 ? (
           <div className="text-center text-gray-500 py-12">
             <p>Chưa có video nào</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-            {videos.map(video => (
+            {filteredVideos.map(video => (
               <div
                 key={video.id}
                 onClick={() => setSelectedVideo(video)}
@@ -47,7 +109,7 @@ export default function VideosPage({ videos, topics, navigateTo }: VideosPagePro
                 </div>
                 <div className="p-3 md:p-4">
                   <h3 className="text-gray-800 mb-2 text-sm md:text-base">{video.title}</h3>
-                  <p className="text-purple-600 text-sm">{getTopicTitle(video.topicId)}</p>
+                  <p className="text-purple-600 text-sm">{getVideoLabel(video)}</p>
                 </div>
               </div>
             ))}
@@ -62,7 +124,7 @@ export default function VideosPage({ videos, topics, navigateTo }: VideosPagePro
             <div className="p-3 md:p-4 border-b flex items-center justify-between">
               <div>
                 <h3 className="text-gray-800 text-sm md:text-base lg:text-lg">{selectedVideo.title}</h3>
-                <p className="text-purple-600 text-xs md:text-sm">{getTopicTitle(selectedVideo.topicId)}</p>
+                <p className="text-purple-600 text-xs md:text-sm">{getVideoLabel(selectedVideo)}</p>
               </div>
               <button
                 onClick={() => setSelectedVideo(null)}

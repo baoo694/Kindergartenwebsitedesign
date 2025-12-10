@@ -20,7 +20,9 @@ export type Topic = {
 
 export type Video = {
   id: string;
-  topicId: string;
+  topicId?: string; // Optional - có thể thuộc topic hoặc field
+  field?: string; // Lĩnh vực - nếu video thuộc lĩnh vực
+  category?: 'nursery' | 'kindergarten'; // Danh mục - nếu video thuộc lĩnh vực
   title: string;
   thumbnail: string;
   videoUrl: string;
@@ -29,14 +31,18 @@ export type Video = {
 
 export type MatchingExercise = {
   id: string;
-  topicId: string;
+  topicId?: string; // Optional - có thể thuộc topic hoặc field
+  field?: string; // Lĩnh vực - nếu bài tập thuộc lĩnh vực
+  category?: 'nursery' | 'kindergarten'; // Danh mục - nếu bài tập thuộc lĩnh vực
   title: string;
   pairs: { image: string; text: string }[];
 };
 
 export type QuizExercise = {
   id: string;
-  topicId: string;
+  topicId?: string; // Optional - có thể thuộc topic hoặc field
+  field?: string; // Lĩnh vực - nếu bài tập thuộc lĩnh vực
+  category?: 'nursery' | 'kindergarten'; // Danh mục - nếu bài tập thuộc lĩnh vực
   title: string;
   questions: {
     question: string;
@@ -45,11 +51,19 @@ export type QuizExercise = {
   }[];
 };
 
+export type Field = {
+  id: string;
+  name: string;
+  category: 'nursery' | 'kindergarten';
+  order: number;
+};
+
 export type AppData = {
   topics: Topic[];
   videos: Video[];
   matchingExercises: MatchingExercise[];
   quizExercises: QuizExercise[];
+  fields: Field[];
 };
 
 const initialData: AppData = {
@@ -57,7 +71,7 @@ const initialData: AppData = {
     { id: '1', title: 'Bé và các bạn', category: 'nursery', description: 'Học cách chào hỏi và kết bạn', order: 1, field: 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội' },
     { id: '2', title: 'Đồ dùng đồ chơi', category: 'nursery', description: 'Nhận biết các đồ dùng và đồ chơi', order: 2, field: 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội' },
     { id: '3', title: 'Cô và các bác trong nhà trẻ', category: 'nursery', description: 'Làm quen với các cô và bác', order: 3, field: 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội' },
-    { id: '4', title: 'Cây và bông hoa', category: 'nursery', description: 'Khám phá thiên nhiên xung quanh', order: 4, field: 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội' },
+    { id: '4', title: 'Cây và bng hoa', category: 'nursery', description: 'Khám phá thiên nhiên xung quanh', order: 4, field: 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội' },
     // Lĩnh vực phát triển tình cảm - kỹ năng xã hội
     { id: '5', title: 'Trường mầm non', category: 'kindergarten', description: 'Làm quen với trường lớp', order: 1, field: 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội' },
     { id: '6', title: 'Bản thân', category: 'kindergarten', description: 'Nhận biết cơ thể và cảm xúc', order: 2, field: 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội' },
@@ -107,6 +121,19 @@ const initialData: AppData = {
       ],
     },
   ],
+  fields: [
+    // Nursery fields
+    { id: 'nf1', name: 'Lĩnh vực phát triển thể chất', category: 'nursery', order: 1 },
+    { id: 'nf2', name: 'Lĩnh vực phát triển ngôn ngữ', category: 'nursery', order: 2 },
+    { id: 'nf3', name: 'Lĩnh vực phát triển nhận thức', category: 'nursery', order: 3 },
+    { id: 'nf4', name: 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội', category: 'nursery', order: 4 },
+    // Kindergarten fields
+    { id: 'kf1', name: 'Lĩnh vực phát triển ngôn ngữ', category: 'kindergarten', order: 1 },
+    { id: 'kf2', name: 'Lĩnh vực phát triển nhận thức', category: 'kindergarten', order: 2 },
+    { id: 'kf3', name: 'Lĩnh vực phát triển thể chất', category: 'kindergarten', order: 3 },
+    { id: 'kf4', name: 'Lĩnh vực phát triển thẩm mỹ', category: 'kindergarten', order: 4 },
+    { id: 'kf5', name: 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội', category: 'kindergarten', order: 5 },
+  ],
 };
 
 type Page = 'home' | 'topics' | 'videos' | 'exercises' | 'admin-login' | 'admin-dashboard' | 'topic-detail' | 'field-detail';
@@ -131,7 +158,7 @@ export default function App() {
       setIsLoading(true);
       
       // Fetch all data in parallel
-      const [topicsRes, videosRes, matchingRes, quizRes] = await Promise.all([
+      const [topicsRes, videosRes, matchingRes, quizRes, fieldsRes] = await Promise.all([
         fetch(`${API_URL}/topics`, {
           headers: { 'Authorization': `Bearer ${publicAnonKey}` }
         }),
@@ -144,15 +171,19 @@ export default function App() {
         fetch(`${API_URL}/quiz-exercises`, {
           headers: { 'Authorization': `Bearer ${publicAnonKey}` }
         }),
+        fetch(`${API_URL}/fields`, {
+          headers: { 'Authorization': `Bearer ${publicAnonKey}` }
+        }),
       ]);
 
       const topics = await topicsRes.json();
       const videos = await videosRes.json();
       const matching = await matchingRes.json();
       const quiz = await quizRes.json();
+      const fields = await fieldsRes.json();
 
       // If no data exists, initialize with default data
-      if (topics.topics.length === 0) {
+      if (topics.topics.length === 0 || !fields.fields || fields.fields.length === 0) {
         await initializeSupabaseData();
         await loadDataFromSupabase(); // Reload after initialization
         return;
@@ -207,6 +238,7 @@ export default function App() {
         videos: videos.videos || [],
         matchingExercises: matching.exercises || [],
         quizExercises: quiz.exercises || [],
+        fields: fields.fields || [],
       });
     } catch (error) {
       console.error('Error loading data from Supabase:', error);
@@ -293,7 +325,7 @@ export default function App() {
             />
           )}
           {currentPage === 'videos' && (
-            <VideosPage videos={appData.videos} topics={appData.topics} navigateTo={navigateTo} />
+            <VideosPage videos={appData.videos} topics={appData.topics} fields={appData.fields} navigateTo={navigateTo} />
           )}
           {currentPage === 'exercises' && (
             <ExercisesPage
@@ -320,14 +352,20 @@ export default function App() {
               fieldName={selectedFieldName}
               topics={appData.topics.filter(t => t.field === selectedFieldName)}
               videos={appData.videos.filter(v => {
+                // Video thuộc field trực tiếp hoặc thuộc topic trong field
+                if (v.field === selectedFieldName) return true;
                 const topic = appData.topics.find(t => t.id === v.topicId);
                 return topic?.field === selectedFieldName;
               })}
               matchingExercises={appData.matchingExercises.filter(e => {
+                // Exercise thuộc field trực tiếp hoặc thuộc topic trong field
+                if (e.field === selectedFieldName) return true;
                 const topic = appData.topics.find(t => t.id === e.topicId);
                 return topic?.field === selectedFieldName;
               })}
               quizExercises={appData.quizExercises.filter(e => {
+                // Exercise thuộc field trực tiếp hoặc thuộc topic trong field
+                if (e.field === selectedFieldName) return true;
                 const topic = appData.topics.find(t => t.id === e.topicId);
                 return topic?.field === selectedFieldName;
               })}

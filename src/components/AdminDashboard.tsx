@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
-import { LogOut, Plus, Edit2, Trash2, Video, BookOpen, GamepadIcon, Upload } from 'lucide-react';
-import type { AppData, Topic, Video as VideoType, MatchingExercise, QuizExercise } from '../App';
+import { LogOut, Plus, Edit2, Trash2, Video, BookOpen, GamepadIcon, Upload, Layers } from 'lucide-react';
+import type { AppData, Topic, Video as VideoType, MatchingExercise, QuizExercise, Field } from '../App';
 import { projectId, publicAnonKey } from '../utils/supabase/info';
 import { convertToEmbedUrl } from '../utils/videoUtils';
-import { KINDERGARTEN_FIELDS } from '../utils/constants';
 
 type AdminDashboardProps = {
   appData: AppData;
@@ -13,7 +12,7 @@ type AdminDashboardProps = {
   reloadData: () => Promise<void>;
 };
 
-type TabType = 'topics' | 'videos' | 'matching' | 'quiz';
+type TabType = 'topics' | 'videos' | 'matching' | 'quiz' | 'fields';
 
 const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-2e8b32fc`;
 
@@ -36,22 +35,47 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
   });
   
   // Video Form
-  const [videoForm, setVideoForm] = useState({ topicId: '', title: '', thumbnail: '', videoUrl: '', contentType: 'skill' as 'skill' | 'emotion' });
+  const [videoForm, setVideoForm] = useState({ 
+    assignType: 'topic' as 'topic' | 'field', // Chọn gán vào topic hay field
+    topicId: '', 
+    field: '', 
+    category: 'nursery' as 'nursery' | 'kindergarten',
+    title: '', 
+    thumbnail: '', 
+    videoUrl: '', 
+    contentType: 'skill' as 'skill' | 'emotion' 
+  });
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string>('');
   const [videoPreview, setVideoPreview] = useState<string>('');
   
   // Matching Exercise Form
-  const [matchingForm, setMatchingForm] = useState({ topicId: '', title: '', pairs: [{ image: '', text: '' }] });
+  const [matchingForm, setMatchingForm] = useState({ 
+    assignType: 'topic' as 'topic' | 'field',
+    topicId: '', 
+    field: '', 
+    category: 'nursery' as 'nursery' | 'kindergarten',
+    title: '', 
+    pairs: [{ image: '', text: '' }] 
+  });
   const [pairImageFiles, setPairImageFiles] = useState<(File | null)[]>([null]);
   const [pairImagePreviews, setPairImagePreviews] = useState<string[]>(['']);
   
   // Quiz Exercise Form
   const [quizForm, setQuizForm] = useState({
+    assignType: 'topic' as 'topic' | 'field',
     topicId: '',
+    field: '',
+    category: 'nursery' as 'nursery' | 'kindergarten',
     title: '',
     questions: [{ question: '', options: ['', '', ''], correctAnswer: 0 }],
+  });
+
+  // Field Form
+  const [fieldForm, setFieldForm] = useState({
+    name: '',
+    category: 'nursery' as 'nursery' | 'kindergarten',
   });
 
   // Save activeTab to localStorage whenever it changes
@@ -213,11 +237,13 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
 
       const newVideo: VideoType = {
         id: Date.now().toString(),
-        topicId: videoForm.topicId,
+        topicId: videoForm.assignType === 'topic' ? videoForm.topicId : undefined,
+        field: videoForm.assignType === 'field' ? videoForm.field : undefined,
+        category: videoForm.assignType === 'field' ? videoForm.category : undefined,
         title: videoForm.title,
         thumbnail,
         videoUrl,
-        contentType: videoForm.contentType,
+        contentType: videoForm.assignType === 'topic' ? videoForm.contentType : 'skill',
       };
 
       const response = await fetch(`${API_URL}/videos`, {
@@ -233,7 +259,7 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
 
       await reloadData();
       setShowAddModal(false);
-      setVideoForm({ topicId: '', title: '', thumbnail: '', videoUrl: '', contentType: 'skill' });
+      setVideoForm({ assignType: 'topic', topicId: '', field: '', category: 'nursery', title: '', thumbnail: '', videoUrl: '', contentType: 'skill' });
       setThumbnailFile(null);
       setVideoFile(null);
     } catch (error) {
@@ -246,7 +272,17 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
 
   const handleEditVideo = (video: VideoType) => {
     setEditingItem(video);
-    setVideoForm({ topicId: video.topicId, title: video.title, thumbnail: video.thumbnail, videoUrl: video.videoUrl, contentType: video.contentType });
+    const assignType = video.field ? 'field' : 'topic';
+    setVideoForm({ 
+      assignType,
+      topicId: video.topicId || '', 
+      field: video.field || '',
+      category: video.category || 'nursery',
+      title: video.title, 
+      thumbnail: video.thumbnail, 
+      videoUrl: video.videoUrl, 
+      contentType: video.contentType 
+    });
     setThumbnailPreview(video.thumbnail);
     setVideoPreview(video.videoUrl);
     setShowAddModal(true);
@@ -271,11 +307,13 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
 
       const updatedVideo: VideoType = {
         ...editingItem,
-        topicId: videoForm.topicId,
+        topicId: videoForm.assignType === 'topic' ? videoForm.topicId : undefined,
+        field: videoForm.assignType === 'field' ? videoForm.field : undefined,
+        category: videoForm.assignType === 'field' ? videoForm.category : undefined,
         title: videoForm.title,
         thumbnail,
         videoUrl,
-        contentType: videoForm.contentType,
+        contentType: videoForm.assignType === 'topic' ? videoForm.contentType : 'skill',
       };
 
       const response = await fetch(`${API_URL}/videos/${editingItem.id}`, {
@@ -292,7 +330,7 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
       await reloadData();
       setShowAddModal(false);
       setEditingItem(null);
-      setVideoForm({ topicId: '', title: '', thumbnail: '', videoUrl: '', contentType: 'skill' });
+      setVideoForm({ assignType: 'topic', topicId: '', field: '', category: 'nursery', title: '', thumbnail: '', videoUrl: '', contentType: 'skill' });
       setThumbnailFile(null);
       setVideoFile(null);
     } catch (error) {
@@ -336,7 +374,9 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
 
       const newExercise: MatchingExercise = {
         id: Date.now().toString(),
-        topicId: matchingForm.topicId,
+        topicId: matchingForm.assignType === 'topic' ? matchingForm.topicId : undefined,
+        field: matchingForm.assignType === 'field' ? matchingForm.field : undefined,
+        category: matchingForm.assignType === 'field' ? matchingForm.category : undefined,
         title: matchingForm.title,
         pairs: updatedPairs,
       };
@@ -354,7 +394,7 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
 
       await reloadData();
       setShowAddModal(false);
-      setMatchingForm({ topicId: '', title: '', pairs: [{ image: '', text: '' }] });
+      setMatchingForm({ assignType: 'topic', topicId: '', field: '', category: 'nursery', title: '', pairs: [{ image: '', text: '' }] });
       setPairImageFiles([null]);
       setPairImagePreviews(['']);
     } catch (error) {
@@ -367,7 +407,15 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
 
   const handleEditMatching = (exercise: MatchingExercise) => {
     setEditingItem(exercise);
-    setMatchingForm({ topicId: exercise.topicId, title: exercise.title, pairs: exercise.pairs });
+    const assignType = exercise.field ? 'field' : 'topic';
+    setMatchingForm({ 
+      assignType, 
+      topicId: exercise.topicId || '', 
+      field: exercise.field || '',
+      category: exercise.category || 'nursery',
+      title: exercise.title, 
+      pairs: exercise.pairs 
+    });
     setPairImageFiles(new Array(exercise.pairs.length).fill(null));
     setPairImagePreviews(exercise.pairs.map(p => p.image));
     setShowAddModal(true);
@@ -388,7 +436,9 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
 
       const updatedExercise: MatchingExercise = {
         ...editingItem,
-        topicId: matchingForm.topicId,
+        topicId: matchingForm.assignType === 'topic' ? matchingForm.topicId : undefined,
+        field: matchingForm.assignType === 'field' ? matchingForm.field : undefined,
+        category: matchingForm.assignType === 'field' ? matchingForm.category : undefined,
         title: matchingForm.title,
         pairs: updatedPairs,
       };
@@ -407,7 +457,7 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
       await reloadData();
       setShowAddModal(false);
       setEditingItem(null);
-      setMatchingForm({ topicId: '', title: '', pairs: [{ image: '', text: '' }] });
+      setMatchingForm({ assignType: 'topic', topicId: '', field: '', category: 'nursery', title: '', pairs: [{ image: '', text: '' }] });
       setPairImageFiles([null]);
       setPairImagePreviews(['']);
     } catch (error) {
@@ -440,7 +490,9 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
     try {
       const newExercise: QuizExercise = {
         id: Date.now().toString(),
-        topicId: quizForm.topicId,
+        topicId: quizForm.assignType === 'topic' ? quizForm.topicId : undefined,
+        field: quizForm.assignType === 'field' ? quizForm.field : undefined,
+        category: quizForm.assignType === 'field' ? quizForm.category : undefined,
         title: quizForm.title,
         questions: quizForm.questions,
       };
@@ -458,7 +510,7 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
 
       await reloadData();
       setShowAddModal(false);
-      setQuizForm({ topicId: '', title: '', questions: [{ question: '', options: ['', '', ''], correctAnswer: 0 }] });
+      setQuizForm({ assignType: 'topic', topicId: '', field: '', category: 'nursery', title: '', questions: [{ question: '', options: ['', '', ''], correctAnswer: 0 }] });
     } catch (error) {
       console.error('Error adding quiz exercise:', error);
       alert('Lỗi khi thêm bài trắc nghiệm');
@@ -467,7 +519,15 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
 
   const handleEditQuiz = (exercise: QuizExercise) => {
     setEditingItem(exercise);
-    setQuizForm({ topicId: exercise.topicId, title: exercise.title, questions: exercise.questions });
+    const assignType = exercise.field ? 'field' : 'topic';
+    setQuizForm({ 
+      assignType,
+      topicId: exercise.topicId || '', 
+      field: exercise.field || '',
+      category: exercise.category || 'nursery',
+      title: exercise.title, 
+      questions: exercise.questions 
+    });
     setShowAddModal(true);
   };
 
@@ -475,7 +535,9 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
     try {
       const updatedExercise: QuizExercise = {
         ...editingItem,
-        topicId: quizForm.topicId,
+        topicId: quizForm.assignType === 'topic' ? quizForm.topicId : undefined,
+        field: quizForm.assignType === 'field' ? quizForm.field : undefined,
+        category: quizForm.assignType === 'field' ? quizForm.category : undefined,
         title: quizForm.title,
         questions: quizForm.questions,
       };
@@ -494,7 +556,7 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
       await reloadData();
       setShowAddModal(false);
       setEditingItem(null);
-      setQuizForm({ topicId: '', title: '', questions: [{ question: '', options: ['', '', ''], correctAnswer: 0 }] });
+      setQuizForm({ assignType: 'topic', topicId: '', field: '', category: 'nursery', title: '', questions: [{ question: '', options: ['', '', ''], correctAnswer: 0 }] });
     } catch (error) {
       console.error('Error updating quiz exercise:', error);
       alert('Lỗi khi cập nhật bài trắc nghiệm');
@@ -516,6 +578,93 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
     } catch (error) {
       console.error('Error deleting quiz exercise:', error);
       alert('Lỗi khi xóa bài trắc nghiệm');
+    }
+  };
+
+  const handleAddField = async () => {
+    try {
+      // Get the max order number for the category
+      const fieldsInCategory = (appData.fields || []).filter(f => f.category === fieldForm.category);
+      const maxOrder = fieldsInCategory.length > 0 
+        ? Math.max(...fieldsInCategory.map(f => f.order || 0))
+        : 0;
+
+      const newField: Field = {
+        id: Date.now().toString(),
+        ...fieldForm,
+        order: maxOrder + 1,
+      };
+
+      const response = await fetch(`${API_URL}/fields`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${publicAnonKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newField),
+      });
+
+      if (!response.ok) throw new Error('Failed to add field');
+
+      await reloadData();
+      setShowAddModal(false);
+      setFieldForm({ name: '', category: 'nursery' });
+    } catch (error) {
+      console.error('Error adding field:', error);
+      alert('Lỗi khi thêm lĩnh vực');
+    }
+  };
+
+  const handleEditField = (field: Field) => {
+    setEditingItem(field);
+    setFieldForm({ name: field.name, category: field.category });
+    setShowAddModal(true);
+  };
+
+  const handleUpdateField = async () => {
+    try {
+      const updatedField: Field = {
+        ...editingItem,
+        name: fieldForm.name,
+        category: fieldForm.category,
+      };
+
+      const response = await fetch(`${API_URL}/fields/${editingItem.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${publicAnonKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedField),
+      });
+
+      if (!response.ok) throw new Error('Failed to update field');
+
+      await reloadData();
+      setShowAddModal(false);
+      setEditingItem(null);
+      setFieldForm({ name: '', category: 'nursery' });
+    } catch (error) {
+      console.error('Error updating field:', error);
+      alert('Lỗi khi cập nhật lĩnh vực');
+    }
+  };
+
+  const handleDeleteField = async (id: string) => {
+    if (!confirm('Bạn có chắc chắn muốn xóa? Lưu ý: Các chủ đề/video/bài tập thuộc lĩnh vực này sẽ không còn liên kết.')) return;
+
+    try {
+      const response = await fetch(`${API_URL}/fields/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${publicAnonKey}` },
+      });
+
+      if (!response.ok) throw new Error('Failed to delete field');
+
+      await reloadData();
+    } catch (error) {
+      console.error('Error deleting field:', error);
+      alert('Lỗi khi xóa lĩnh vực');
     }
   };
 
@@ -622,6 +771,15 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
             <GamepadIcon className="w-5 h-5" />
             Trắc nghiệm
           </button>
+          <button
+            onClick={() => setActiveTab('fields')}
+            className={`flex items-center gap-2 px-6 py-3 border-b-2 transition whitespace-nowrap ${
+              activeTab === 'fields' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-600'
+            }`}
+          >
+            <Layers className="w-5 h-5" />
+            Lĩnh vực
+          </button>
         </div>
 
         {/* Add Button */}
@@ -690,7 +848,13 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
                 {appData.videos.map((video) => (
                   <tr key={video.id} className="border-t">
                     <td className="px-6 py-4">{video.title}</td>
-                    <td className="px-6 py-4">{appData.topics.find(t => t.id === video.topicId)?.title}</td>
+                    <td className="px-6 py-4">
+                      {video.topicId 
+                        ? appData.topics.find(t => t.id === video.topicId)?.title 
+                        : video.field 
+                          ? `${video.field} (${video.category === 'nursery' ? 'Nhà trẻ' : 'Mẫu giáo'})` 
+                          : ''}
+                    </td>
                     <td className="px-6 py-4">
                       <img src={video.thumbnail} alt={video.title} className="w-16 h-16 object-cover rounded" />
                     </td>
@@ -731,7 +895,13 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
                 {appData.matchingExercises.map((exercise) => (
                   <tr key={exercise.id} className="border-t">
                     <td className="px-6 py-4">{exercise.title}</td>
-                    <td className="px-6 py-4">{appData.topics.find(t => t.id === exercise.topicId)?.title}</td>
+                    <td className="px-6 py-4">
+                      {exercise.topicId 
+                        ? appData.topics.find(t => t.id === exercise.topicId)?.title 
+                        : exercise.field 
+                          ? `${exercise.field} (${exercise.category === 'nursery' ? 'Nhà trẻ' : 'Mẫu giáo'})` 
+                          : ''}
+                    </td>
                     <td className="px-6 py-4">{exercise.pairs.length}</td>
                     <td className="px-6 py-4 text-right">
                       <button
@@ -770,7 +940,13 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
                 {appData.quizExercises.map((exercise) => (
                   <tr key={exercise.id} className="border-t">
                     <td className="px-6 py-4">{exercise.title}</td>
-                    <td className="px-6 py-4">{appData.topics.find(t => t.id === exercise.topicId)?.title}</td>
+                    <td className="px-6 py-4">
+                      {exercise.topicId 
+                        ? appData.topics.find(t => t.id === exercise.topicId)?.title 
+                        : exercise.field 
+                          ? `${exercise.field} (${exercise.category === 'nursery' ? 'Nhà trẻ' : 'Mẫu giáo'})` 
+                          : ''}
+                    </td>
                     <td className="px-6 py-4">{exercise.questions.length}</td>
                     <td className="px-6 py-4 text-right">
                       <button
@@ -792,6 +968,55 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
             </table>
           </div>
         )}
+
+        {/* Fields Tab */}
+        {activeTab === 'fields' && (
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+            {(!appData.fields || appData.fields.length === 0) ? (
+              <div className="px-6 py-12 text-center">
+                <p className="text-gray-600 mb-4">Chưa có lĩnh vực nào. Vui lòng reload trang để khởi tạo dữ liệu mặc định.</p>
+                <button 
+                  onClick={() => window.location.reload()}
+                  className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition"
+                >
+                  Reload trang
+                </button>
+              </div>
+            ) : (
+              <table className="w-full">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="px-6 py-3 text-left">Tên lĩnh vực</th>
+                    <th className="px-6 py-3 text-left">Loại</th>
+                    <th className="px-6 py-3 text-right">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {appData.fields.map((field) => (
+                    <tr key={field.id} className="border-t">
+                      <td className="px-6 py-4">{field.name}</td>
+                      <td className="px-6 py-4">{field.category === 'nursery' ? 'Nhà trẻ' : 'Mẫu giáo'}</td>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          onClick={() => handleEditField(field)}
+                          className="text-blue-600 hover:text-blue-800 p-2"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteField(field.id)}
+                          className="text-red-600 hover:text-red-800 p-2"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Add/Edit Modal */}
@@ -799,7 +1024,7 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl max-w-2xl w-full p-8 my-8 max-h-[90vh] overflow-y-auto">
             <h2 className="text-gray-800 mb-6">
-              {editingItem ? 'Chỉnh sửa' : 'Thêm mới'} {activeTab === 'topics' ? 'Chủ đề' : activeTab === 'videos' ? 'Video' : activeTab === 'matching' ? 'Bài ghép hình' : 'Bài trắc nghiệm'}
+              {editingItem ? 'Chỉnh sửa' : 'Thêm mới'} {activeTab === 'topics' ? 'Chủ đề' : activeTab === 'videos' ? 'Video' : activeTab === 'matching' ? 'Bài ghép hình' : activeTab === 'quiz' ? 'Bài trắc nghiệm' : 'Lĩnh vực'}
             </h2>
 
             {/* Topic Form */}
@@ -818,7 +1043,11 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
                   <label className="block mb-2">Loại</label>
                   <select
                     value={topicForm.category}
-                    onChange={(e) => setTopicForm({ ...topicForm, category: e.target.value as 'nursery' | 'kindergarten' })}
+                    onChange={(e) => {
+                      const newCategory = e.target.value as 'nursery' | 'kindergarten';
+                      const defaultField = (appData.fields || []).find(f => f.category === newCategory && f.order === 1);
+                      setTopicForm({ ...topicForm, category: newCategory, field: defaultField?.name || '' });
+                    }}
                     className="w-full px-4 py-2 border rounded-lg"
                   >
                     <option value="nursery">Nhà trẻ</option>
@@ -834,20 +1063,21 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
                     rows={3}
                   />
                 </div>
-                {topicForm.category === 'kindergarten' && (
-                  <div>
-                    <label className="block mb-2">Lĩnh vực phát triển (chỉ áp dụng cho Mẫu giáo)</label>
-                    <select
-                      value={topicForm.field}
-                      onChange={(e) => setTopicForm({ ...topicForm, field: e.target.value })}
-                      className="w-full px-4 py-2 border rounded-lg"
-                    >
-                      {KINDERGARTEN_FIELDS.map(field => (
-                        <option key={field} value={field}>{field}</option>
+                <div>
+                  <label className="block mb-2">Lĩnh vực phát triển</label>
+                  <select
+                    value={topicForm.field}
+                    onChange={(e) => setTopicForm({ ...topicForm, field: e.target.value })}
+                    className="w-full px-4 py-2 border rounded-lg"
+                  >
+                    {(appData.fields || [])
+                      .filter(f => f.category === topicForm.category)
+                      .sort((a, b) => a.order - b.order)
+                      .map(field => (
+                        <option key={field.id} value={field.name}>{field.name}</option>
                       ))}
-                    </select>
-                  </div>
-                )}
+                  </select>
+                </div>
                 <div className="flex gap-4">
                   <button
                     onClick={editingItem ? handleUpdateTopic : handleAddTopic}
@@ -873,18 +1103,62 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
             {activeTab === 'videos' && (
               <div className="space-y-4">
                 <div>
-                  <label className="block mb-2">Chủ đề</label>
+                  <label className="block mb-2">Chọn gán vào</label>
                   <select
-                    value={videoForm.topicId}
-                    onChange={(e) => setVideoForm({ ...videoForm, topicId: e.target.value })}
+                    value={videoForm.assignType}
+                    onChange={(e) => setVideoForm({ ...videoForm, assignType: e.target.value as 'topic' | 'field' })}
                     className="w-full px-4 py-2 border rounded-lg"
                   >
-                    <option value="">Chọn chủ đề</option>
-                    {appData.topics.map(topic => (
-                      <option key={topic.id} value={topic.id}>{topic.title}</option>
-                    ))}
+                    <option value="topic">Chủ đề</option>
+                    <option value="field">Lĩnh vực phát triển</option>
                   </select>
                 </div>
+                {videoForm.assignType === 'topic' && (
+                  <div>
+                    <label className="block mb-2">Chủ đề</label>
+                    <select
+                      value={videoForm.topicId}
+                      onChange={(e) => setVideoForm({ ...videoForm, topicId: e.target.value })}
+                      className="w-full px-4 py-2 border rounded-lg"
+                    >
+                      <option value="">Chọn chủ đề</option>
+                      {appData.topics.map(topic => (
+                        <option key={topic.id} value={topic.id}>{topic.title}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                {videoForm.assignType === 'field' && (
+                  <>
+                    <div>
+                      <label className="block mb-2">Loại</label>
+                      <select
+                        value={videoForm.category}
+                        onChange={(e) => setVideoForm({ ...videoForm, category: e.target.value as 'nursery' | 'kindergarten', field: '' })}
+                        className="w-full px-4 py-2 border rounded-lg"
+                      >
+                        <option value="nursery">Nhà trẻ</option>
+                        <option value="kindergarten">Mẫu giáo</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block mb-2">Lĩnh vực phát triển</label>
+                      <select
+                        value={videoForm.field}
+                        onChange={(e) => setVideoForm({ ...videoForm, field: e.target.value })}
+                        className="w-full px-4 py-2 border rounded-lg"
+                      >
+                        <option value="">Chọn lĩnh vực</option>
+                        {(appData.fields || [])
+                          .filter(f => f.category === videoForm.category)
+                          .sort((a, b) => a.order - b.order)
+                          .map(field => (
+                            <option key={field.id} value={field.name}>{field.name}</option>
+                          ))}
+                      </select>
+                    </div>
+                  </>
+                )}
                 <div>
                   <label className="block mb-2">Tiêu đề</label>
                   <input
@@ -970,17 +1244,19 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
                     </div>
                   )}
                 </div>
-                <div>
-                  <label className="block mb-2">Loại nội dung</label>
-                  <select
-                    value={videoForm.contentType}
-                    onChange={(e) => setVideoForm({ ...videoForm, contentType: e.target.value as 'skill' | 'emotion' })}
-                    className="w-full px-4 py-2 border rounded-lg"
-                  >
-                    <option value="skill">Kỹ năng</option>
-                    <option value="emotion">Cảm xúc</option>
-                  </select>
-                </div>
+                {videoForm.assignType === 'topic' && (
+                  <div>
+                    <label className="block mb-2">Loại nội dung</label>
+                    <select
+                      value={videoForm.contentType}
+                      onChange={(e) => setVideoForm({ ...videoForm, contentType: e.target.value as 'skill' | 'emotion' })}
+                      className="w-full px-4 py-2 border rounded-lg"
+                    >
+                      <option value="skill">Kỹ năng</option>
+                      <option value="emotion">Cảm xúc</option>
+                    </select>
+                  </div>
+                )}
                 
                 {/* Preview Section */}
                 {(thumbnailPreview || videoPreview) && (
@@ -1055,18 +1331,62 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
             {activeTab === 'matching' && (
               <div className="space-y-4">
                 <div>
-                  <label className="block mb-2">Chủ đề</label>
+                  <label className="block mb-2">Chọn gán vào</label>
                   <select
-                    value={matchingForm.topicId}
-                    onChange={(e) => setMatchingForm({ ...matchingForm, topicId: e.target.value })}
+                    value={matchingForm.assignType}
+                    onChange={(e) => setMatchingForm({ ...matchingForm, assignType: e.target.value as 'topic' | 'field' })}
                     className="w-full px-4 py-2 border rounded-lg"
                   >
-                    <option value="">Chọn chủ đề</option>
-                    {appData.topics.map(topic => (
-                      <option key={topic.id} value={topic.id}>{topic.title}</option>
-                    ))}
+                    <option value="topic">Chủ đề</option>
+                    <option value="field">Lĩnh vực phát triển</option>
                   </select>
                 </div>
+                {matchingForm.assignType === 'topic' && (
+                  <div>
+                    <label className="block mb-2">Chủ đề</label>
+                    <select
+                      value={matchingForm.topicId}
+                      onChange={(e) => setMatchingForm({ ...matchingForm, topicId: e.target.value })}
+                      className="w-full px-4 py-2 border rounded-lg"
+                    >
+                      <option value="">Chọn chủ đề</option>
+                      {appData.topics.map(topic => (
+                        <option key={topic.id} value={topic.id}>{topic.title}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                {matchingForm.assignType === 'field' && (
+                  <>
+                    <div>
+                      <label className="block mb-2">Loại</label>
+                      <select
+                        value={matchingForm.category}
+                        onChange={(e) => setMatchingForm({ ...matchingForm, category: e.target.value as 'nursery' | 'kindergarten', field: '' })}
+                        className="w-full px-4 py-2 border rounded-lg"
+                      >
+                        <option value="nursery">Nhà trẻ</option>
+                        <option value="kindergarten">Mẫu giáo</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block mb-2">Lĩnh vực phát triển</label>
+                      <select
+                        value={matchingForm.field}
+                        onChange={(e) => setMatchingForm({ ...matchingForm, field: e.target.value })}
+                        className="w-full px-4 py-2 border rounded-lg"
+                      >
+                        <option value="">Chọn lĩnh vực</option>
+                        {(appData.fields || [])
+                          .filter(f => f.category === matchingForm.category)
+                          .sort((a, b) => a.order - b.order)
+                          .map(field => (
+                            <option key={field.id} value={field.name}>{field.name}</option>
+                          ))}
+                      </select>
+                    </div>
+                  </>
+                )}
                 <div>
                   <label className="block mb-2">Tiêu đề</label>
                   <input
@@ -1222,7 +1542,7 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
                     onClick={() => {
                       setShowAddModal(false);
                       setEditingItem(null);
-                      setMatchingForm({ topicId: '', title: '', pairs: [{ image: '', text: '' }] });
+                      setMatchingForm({ assignType: 'topic', topicId: '', field: '', category: 'nursery', title: '', pairs: [{ image: '', text: '' }] });
                       setPairImageFiles([null]);
                       setPairImagePreviews(['']);
                     }}
@@ -1239,18 +1559,62 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
             {activeTab === 'quiz' && (
               <div className="space-y-4">
                 <div>
-                  <label className="block mb-2">Chủ đề</label>
+                  <label className="block mb-2">Chọn gán vào</label>
                   <select
-                    value={quizForm.topicId}
-                    onChange={(e) => setQuizForm({ ...quizForm, topicId: e.target.value })}
+                    value={quizForm.assignType}
+                    onChange={(e) => setQuizForm({ ...quizForm, assignType: e.target.value as 'topic' | 'field' })}
                     className="w-full px-4 py-2 border rounded-lg"
                   >
-                    <option value="">Chọn chủ đề</option>
-                    {appData.topics.map(topic => (
-                      <option key={topic.id} value={topic.id}>{topic.title}</option>
-                    ))}
+                    <option value="topic">Chủ đề</option>
+                    <option value="field">Lĩnh vực phát triển</option>
                   </select>
                 </div>
+                {quizForm.assignType === 'topic' && (
+                  <div>
+                    <label className="block mb-2">Chủ đề</label>
+                    <select
+                      value={quizForm.topicId}
+                      onChange={(e) => setQuizForm({ ...quizForm, topicId: e.target.value })}
+                      className="w-full px-4 py-2 border rounded-lg"
+                    >
+                      <option value="">Chọn chủ đề</option>
+                      {appData.topics.map(topic => (
+                        <option key={topic.id} value={topic.id}>{topic.title}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                {quizForm.assignType === 'field' && (
+                  <>
+                    <div>
+                      <label className="block mb-2">Lo��i</label>
+                      <select
+                        value={quizForm.category}
+                        onChange={(e) => setQuizForm({ ...quizForm, category: e.target.value as 'nursery' | 'kindergarten', field: '' })}
+                        className="w-full px-4 py-2 border rounded-lg"
+                      >
+                        <option value="nursery">Nhà trẻ</option>
+                        <option value="kindergarten">Mẫu giáo</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block mb-2">Lĩnh vực phát triển</label>
+                      <select
+                        value={quizForm.field}
+                        onChange={(e) => setQuizForm({ ...quizForm, field: e.target.value })}
+                        className="w-full px-4 py-2 border rounded-lg"
+                      >
+                        <option value="">Chọn lĩnh vực</option>
+                        {(appData.fields || [])
+                          .filter(f => f.category === quizForm.category)
+                          .sort((a, b) => a.order - b.order)
+                          .map(field => (
+                            <option key={field.id} value={field.name}>{field.name}</option>
+                          ))}
+                      </select>
+                    </div>
+                  </>
+                )}
                 <div>
                   <label className="block mb-2">Tiêu đề</label>
                   <input
@@ -1348,7 +1712,52 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
                     onClick={() => {
                       setShowAddModal(false);
                       setEditingItem(null);
-                      setQuizForm({ topicId: '', title: '', questions: [{ question: '', options: ['', '', ''], correctAnswer: 0 }] });
+                      setQuizForm({ assignType: 'topic', topicId: '', field: '', category: 'nursery', title: '', questions: [{ question: '', options: ['', '', ''], correctAnswer: 0 }] });
+                    }}
+                    className="flex-1 bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600"
+                  >
+                    Hủy
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Field Form */}
+            {activeTab === 'fields' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block mb-2">Tên lĩnh vực</label>
+                  <input
+                    type="text"
+                    value={fieldForm.name}
+                    onChange={(e) => setFieldForm({ ...fieldForm, name: e.target.value })}
+                    className="w-full px-4 py-2 border rounded-lg"
+                    placeholder="VD: Lĩnh vực phát triển ngôn ngữ"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-2">Loại</label>
+                  <select
+                    value={fieldForm.category}
+                    onChange={(e) => setFieldForm({ ...fieldForm, category: e.target.value as 'nursery' | 'kindergarten' })}
+                    className="w-full px-4 py-2 border rounded-lg"
+                  >
+                    <option value="nursery">Nhà trẻ</option>
+                    <option value="kindergarten">Mẫu giáo</option>
+                  </select>
+                </div>
+                <div className="flex gap-4">
+                  <button
+                    onClick={editingItem ? handleUpdateField : handleAddField}
+                    className="flex-1 bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700"
+                  >
+                    {editingItem ? 'Cập nhật' : 'Thêm'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowAddModal(false);
+                      setEditingItem(null);
+                      setFieldForm({ name: '', category: 'nursery' });
                     }}
                     className="flex-1 bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600"
                   >

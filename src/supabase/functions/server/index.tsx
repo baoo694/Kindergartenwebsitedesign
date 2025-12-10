@@ -354,12 +354,14 @@ app.post('/make-server-2e8b32fc/initialize', async (c) => {
     const existingVideos = await kv.getByPrefix('video:');
     const existingMatching = await kv.getByPrefix('matching:');
     const existingQuiz = await kv.getByPrefix('quiz:');
+    const existingFields = await kv.getByPrefix('field:');
     
     const keysToDelete = [
       ...existingTopics.map((t: any) => `topic:${t.id}`),
       ...existingVideos.map((v: any) => `video:${v.id}`),
       ...existingMatching.map((m: any) => `matching:${m.id}`),
       ...existingQuiz.map((q: any) => `quiz:${q.id}`),
+      ...existingFields.map((f: any) => `field:${f.id}`),
     ];
     
     if (keysToDelete.length > 0) {
@@ -379,10 +381,63 @@ app.post('/make-server-2e8b32fc/initialize', async (c) => {
     const quizKeys = data.quizExercises.map((q: any) => `quiz:${q.id}`);
     await kv.mset(quizKeys, data.quizExercises);
     
+    // Initialize fields
+    if (data.fields && data.fields.length > 0) {
+      const fieldKeys = data.fields.map((f: any) => `field:${f.id}`);
+      await kv.mset(fieldKeys, data.fields);
+    }
+    
     return c.json({ success: true });
   } catch (error) {
     console.error('Error initializing data:', error);
     return c.json({ error: 'Failed to initialize data', details: String(error) }, 500);
+  }
+});
+
+// ===== FIELDS =====
+app.get('/make-server-2e8b32fc/fields', async (c) => {
+  try {
+    const fields = await kv.getByPrefix('field:');
+    // Sort fields by order field
+    const sortedFields = (fields || []).sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+    return c.json({ fields: sortedFields });
+  } catch (error) {
+    console.error('Error fetching fields:', error);
+    return c.json({ error: 'Failed to fetch fields', details: String(error) }, 500);
+  }
+});
+
+app.post('/make-server-2e8b32fc/fields', async (c) => {
+  try {
+    const field = await c.req.json();
+    await kv.set(`field:${field.id}`, field);
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Error creating field:', error);
+    return c.json({ error: 'Failed to create field', details: String(error) }, 500);
+  }
+});
+
+app.put('/make-server-2e8b32fc/fields/:id', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const field = await c.req.json();
+    await kv.set(`field:${id}`, field);
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Error updating field:', error);
+    return c.json({ error: 'Failed to update field', details: String(error) }, 500);
+  }
+});
+
+app.delete('/make-server-2e8b32fc/fields/:id', async (c) => {
+  try {
+    const id = c.req.param('id');
+    await kv.del(`field:${id}`);
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting field:', error);
+    return c.json({ error: 'Failed to delete field', details: String(error) }, 500);
   }
 });
 
