@@ -3,6 +3,7 @@ import { LogOut, Plus, Edit2, Trash2, Video, BookOpen, GamepadIcon, Upload } fro
 import type { AppData, Topic, Video as VideoType, MatchingExercise, QuizExercise } from '../App';
 import { projectId, publicAnonKey } from '../utils/supabase/info';
 import { convertToEmbedUrl } from '../utils/videoUtils';
+import { KINDERGARTEN_FIELDS } from '../utils/constants';
 
 type AdminDashboardProps = {
   appData: AppData;
@@ -27,7 +28,12 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
   const [isUploading, setIsUploading] = useState(false);
 
   // Topic Form
-  const [topicForm, setTopicForm] = useState({ title: '', category: 'nursery' as 'nursery' | 'kindergarten', description: '' });
+  const [topicForm, setTopicForm] = useState({ 
+    title: '', 
+    category: 'nursery' as 'nursery' | 'kindergarten', 
+    description: '',
+    field: 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội' // Default field
+  });
   
   // Video Form
   const [videoForm, setVideoForm] = useState({ topicId: '', title: '', thumbnail: '', videoUrl: '', contentType: 'skill' as 'skill' | 'emotion' });
@@ -118,7 +124,7 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
 
       await reloadData();
       setShowAddModal(false);
-      setTopicForm({ title: '', category: 'nursery', description: '' });
+      setTopicForm({ title: '', category: 'nursery', description: '', field: 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội' });
     } catch (error) {
       console.error('Error adding topic:', error);
       alert('Lỗi khi thêm chủ đề');
@@ -127,7 +133,7 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
 
   const handleEditTopic = (topic: Topic) => {
     setEditingItem(topic);
-    setTopicForm({ title: topic.title, category: topic.category, description: topic.description });
+    setTopicForm({ title: topic.title, category: topic.category, description: topic.description, field: topic.field });
     setShowAddModal(true);
   };
 
@@ -142,6 +148,7 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
         title: topicForm.title,
         category: topicForm.category,
         description: topicForm.description,
+        field: topicForm.field,
         // IMPORTANT: Keep the original order - do not change it
         order: editingItem.order,
       };
@@ -162,7 +169,7 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
       await reloadData();
       setShowAddModal(false);
       setEditingItem(null);
-      setTopicForm({ title: '', category: 'nursery', description: '' });
+      setTopicForm({ title: '', category: 'nursery', description: '', field: 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội' });
     } catch (error) {
       console.error('Error updating topic:', error);
       alert('Lỗi khi cập nhật chủ đề');
@@ -827,6 +834,20 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
                     rows={3}
                   />
                 </div>
+                {topicForm.category === 'kindergarten' && (
+                  <div>
+                    <label className="block mb-2">Lĩnh vực phát triển (chỉ áp dụng cho Mẫu giáo)</label>
+                    <select
+                      value={topicForm.field}
+                      onChange={(e) => setTopicForm({ ...topicForm, field: e.target.value })}
+                      className="w-full px-4 py-2 border rounded-lg"
+                    >
+                      {KINDERGARTEN_FIELDS.map(field => (
+                        <option key={field} value={field}>{field}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div className="flex gap-4">
                   <button
                     onClick={editingItem ? handleUpdateTopic : handleAddTopic}
@@ -838,7 +859,7 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
                     onClick={() => {
                       setShowAddModal(false);
                       setEditingItem(null);
-                      setTopicForm({ title: '', category: 'nursery', description: '' });
+                      setTopicForm({ title: '', category: 'nursery', description: '', field: 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội' });
                     }}
                     className="flex-1 bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600"
                   >

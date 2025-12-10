@@ -6,6 +6,7 @@ import VideosPage from './components/VideosPage';
 import ExercisesPage from './components/ExercisesPage';
 import AdminLogin from './components/AdminLogin';
 import AdminDashboard from './components/AdminDashboard';
+import FieldDetail from './components/FieldDetail';
 import { projectId, publicAnonKey } from './utils/supabase/info';
 
 export type Topic = {
@@ -14,6 +15,7 @@ export type Topic = {
   category: 'nursery' | 'kindergarten';
   description: string;
   order: number; // Thứ tự hiển thị
+  field?: string; // Lĩnh vực (chỉ áp dụng cho kindergarten)
 };
 
 export type Video = {
@@ -52,14 +54,21 @@ export type AppData = {
 
 const initialData: AppData = {
   topics: [
-    { id: '1', title: 'Bé và các bạn', category: 'nursery', description: 'Học cách chào hỏi và kết bạn', order: 1 },
-    { id: '2', title: 'Đồ dùng đồ chơi', category: 'nursery', description: 'Nhận biết các đồ dùng và đồ chơi', order: 2 },
-    { id: '3', title: 'Cô và các bác trong nhà trẻ', category: 'nursery', description: 'Làm quen với các cô và bác', order: 3 },
-    { id: '4', title: 'Cây và bông hoa', category: 'nursery', description: 'Khám phá thiên nhiên xung quanh', order: 4 },
-    { id: '5', title: 'Trường mầm non', category: 'kindergarten', description: 'Làm quen với trường lớp', order: 1 },
-    { id: '6', title: 'Bản thân', category: 'kindergarten', description: 'Nhận biết cơ thể và cảm xúc', order: 2 },
-    { id: '7', title: 'Gia đình', category: 'kindergarten', description: 'Tìm hiểu về gia đình', order: 3 },
-    { id: '8', title: 'Nghề nghiệp', category: 'kindergarten', description: 'Khám phá các nghề nghiệp', order: 4 },
+    { id: '1', title: 'Bé và các bạn', category: 'nursery', description: 'Học cách chào hỏi và kết bạn', order: 1, field: 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội' },
+    { id: '2', title: 'Đồ dùng đồ chơi', category: 'nursery', description: 'Nhận biết các đồ dùng và đồ chơi', order: 2, field: 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội' },
+    { id: '3', title: 'Cô và các bác trong nhà trẻ', category: 'nursery', description: 'Làm quen với các cô và bác', order: 3, field: 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội' },
+    { id: '4', title: 'Cây và bông hoa', category: 'nursery', description: 'Khám phá thiên nhiên xung quanh', order: 4, field: 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội' },
+    // Lĩnh vực phát triển tình cảm - kỹ năng xã hội
+    { id: '5', title: 'Trường mầm non', category: 'kindergarten', description: 'Làm quen với trường lớp', order: 1, field: 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội' },
+    { id: '6', title: 'Bản thân', category: 'kindergarten', description: 'Nhận biết cơ thể và cảm xúc', order: 2, field: 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội' },
+    { id: '7', title: 'Gia đình', category: 'kindergarten', description: 'Tìm hiểu về gia đình', order: 3, field: 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội' },
+    { id: '8', title: 'Nghề nghiệp', category: 'kindergarten', description: 'Khám phá các nghề nghiệp', order: 4, field: 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội' },
+    { id: '9', title: 'Động vật', category: 'kindergarten', description: 'Tìm hiểu các loài vật quanh bé', order: 5, field: 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội' },
+    { id: '10', title: 'Thực vật', category: 'kindergarten', description: 'Quan sát cây cỏ và hoa lá', order: 6, field: 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội' },
+    { id: '11', title: 'Phương tiện giao thông', category: 'kindergarten', description: 'Làm quen luật lệ và an toàn giao thông', order: 7, field: 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội' },
+    { id: '12', title: 'Nước và các hiện tượng tự nhiên', category: 'kindergarten', description: 'Khám phá nước và thời tiết', order: 8, field: 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội' },
+    { id: '13', title: 'Quê hương–Đất nước–Bác Hồ', category: 'kindergarten', description: 'Bồi dưỡng tình yêu quê hương đất nước', order: 9, field: 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội' },
+    { id: '14', title: 'Trường tiểu học', category: 'kindergarten', description: 'Làm quen môi trường tiểu học', order: 10, field: 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội' },
   ],
   videos: [
     { id: 'v1', topicId: '1', title: 'Chào bạn mới', thumbnail: 'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=400', videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ', contentType: 'skill' },
@@ -100,7 +109,7 @@ const initialData: AppData = {
   ],
 };
 
-type Page = 'home' | 'topics' | 'videos' | 'exercises' | 'admin-login' | 'admin-dashboard' | 'topic-detail';
+type Page = 'home' | 'topics' | 'videos' | 'exercises' | 'admin-login' | 'admin-dashboard' | 'topic-detail' | 'field-detail';
 
 const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-2e8b32fc`;
 
@@ -109,6 +118,7 @@ export default function App() {
   const [appData, setAppData] = useState<AppData>(initialData);
   const [isAdmin, setIsAdmin] = useState(false);
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
+  const [selectedFieldName, setSelectedFieldName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Load data from Supabase
@@ -159,12 +169,27 @@ export default function App() {
         return topic;
       });
 
+      // Migration: Add field to kindergarten topics if missing
+      const fullyMigratedTopics = migratedTopics.map((topic: Topic) => {
+        if (topic.category === 'kindergarten' && !topic.field) {
+          // Assign to default field: "Lĩnh vực phát triển tình cảm - kỹ năng xã hội"
+          return { ...topic, field: 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội' };
+        }
+        // Migration: Add field to nursery topics if missing
+        if (topic.category === 'nursery' && !topic.field) {
+          // Assign to default field: "Lĩnh vực phát triển tình cảm - kỹ năng xã hội"
+          return { ...topic, field: 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội' };
+        }
+        return topic;
+      });
+
       // Check if migration was needed and save back to server
-      const needsMigration = topics.topics.some((t: Topic) => t.order === undefined || t.order === null);
+      const needsMigration = topics.topics.some((t: Topic) => t.order === undefined || t.order === null) ||
+        topics.topics.some((t: Topic) => (t.category === 'kindergarten' || t.category === 'nursery') && !t.field);
       if (needsMigration) {
         // Save migrated topics back to server
         await Promise.all(
-          migratedTopics.map((topic: Topic) =>
+          fullyMigratedTopics.map((topic: Topic) =>
             fetch(`${API_URL}/topics/${topic.id}`, {
               method: 'PUT',
               headers: {
@@ -178,7 +203,7 @@ export default function App() {
       }
 
       setAppData({
-        topics: migratedTopics || [],
+        topics: fullyMigratedTopics || [],
         videos: videos.videos || [],
         matchingExercises: matching.exercises || [],
         quizExercises: quiz.exercises || [],
@@ -218,7 +243,12 @@ export default function App() {
   const navigateTo = (page: Page, topicId?: string) => {
     setCurrentPage(page);
     if (topicId) {
-      setSelectedTopicId(topicId);
+      // If navigating to field-detail, topicId is actually the field name
+      if (page === 'field-detail') {
+        setSelectedFieldName(topicId);
+      } else {
+        setSelectedTopicId(topicId);
+      }
     }
   };
 
@@ -283,6 +313,25 @@ export default function App() {
               onLogout={handleLogout}
               navigateTo={navigateTo}
               reloadData={loadDataFromSupabase}
+            />
+          )}
+          {currentPage === 'field-detail' && selectedFieldName && (
+            <FieldDetail
+              fieldName={selectedFieldName}
+              topics={appData.topics.filter(t => t.field === selectedFieldName)}
+              videos={appData.videos.filter(v => {
+                const topic = appData.topics.find(t => t.id === v.topicId);
+                return topic?.field === selectedFieldName;
+              })}
+              matchingExercises={appData.matchingExercises.filter(e => {
+                const topic = appData.topics.find(t => t.id === e.topicId);
+                return topic?.field === selectedFieldName;
+              })}
+              quizExercises={appData.quizExercises.filter(e => {
+                const topic = appData.topics.find(t => t.id === e.topicId);
+                return topic?.field === selectedFieldName;
+              })}
+              navigateTo={navigateTo}
             />
           )}
         </>
