@@ -1,5 +1,9 @@
-import { ArrowLeft, Video, Brain } from 'lucide-react';
+import { useState } from 'react';
+import { Video, Brain } from 'lucide-react';
 import Header from './Header';
+import MatchingGame from './MatchingGame';
+import QuizGame from './QuizGame';
+import { convertToEmbedUrl } from '../utils/videoUtils';
 import type { Video as VideoType, MatchingExercise, QuizExercise, Topic } from '../App';
 
 type FieldDetailProps = {
@@ -19,6 +23,10 @@ export default function FieldDetail({
   topics,
   navigateTo 
 }: FieldDetailProps) {
+  const [selectedVideo, setSelectedVideo] = useState<VideoType | null>(null);
+  const [selectedMatchingExercise, setSelectedMatchingExercise] = useState<MatchingExercise | null>(null);
+  const [selectedQuizExercise, setSelectedQuizExercise] = useState<QuizExercise | null>(null);
+
   return (
     <div className="min-h-screen pt-16 md:pt-20">
       <Header title={fieldName} navigateTo={navigateTo} showNav={false} showBackButton={true} backButtonPage="topics" />
@@ -40,7 +48,8 @@ export default function FieldDetail({
                 return (
                   <div
                     key={video.id}
-                    className="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition cursor-pointer hover:scale-105"
+                    onClick={() => setSelectedVideo(video)}
+                    className="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition cursor-pointer hover:scale-105 active:scale-95"
                   >
                     <img 
                       src={video.thumbnail} 
@@ -79,7 +88,8 @@ export default function FieldDetail({
               return (
                 <div
                   key={exercise.id}
-                  className="bg-white rounded-xl p-6 shadow-lg hover:shadow-2xl transition cursor-pointer border-l-4 border-green-400 hover:scale-105"
+                  onClick={() => setSelectedMatchingExercise(exercise)}
+                  className="bg-white rounded-xl p-6 shadow-lg hover:shadow-2xl transition cursor-pointer border-l-4 border-green-400 hover:scale-105 active:scale-95"
                 >
                   <div className="text-4xl mb-3">🎯</div>
                   <h3 className="text-green-600 mb-2">{exercise.title}</h3>
@@ -96,7 +106,8 @@ export default function FieldDetail({
               return (
                 <div
                   key={exercise.id}
-                  className="bg-white rounded-xl p-6 shadow-lg hover:shadow-2xl transition cursor-pointer border-l-4 border-green-400 hover:scale-105"
+                  onClick={() => setSelectedQuizExercise(exercise)}
+                  className="bg-white rounded-xl p-6 shadow-lg hover:shadow-2xl transition cursor-pointer border-l-4 border-green-400 hover:scale-105 active:scale-95"
                 >
                   <div className="text-4xl mb-3">❓</div>
                   <h3 className="text-green-600 mb-2">{exercise.title}</h3>
@@ -116,6 +127,56 @@ export default function FieldDetail({
           </div>
         </section>
       </div>
+
+      {/* Video Modal */}
+      {selectedVideo && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-4xl w-full overflow-hidden">
+            <div className="p-3 md:p-4 border-b flex items-center justify-between">
+              <div>
+                <h3 className="text-gray-800 text-sm md:text-base lg:text-lg">{selectedVideo.title}</h3>
+                {selectedVideo.topicId && (
+                  <p className="text-purple-600 text-xs md:text-sm">
+                    Chủ đề: {topics.find(t => t.id === selectedVideo.topicId)?.title}
+                  </p>
+                )}
+                {!selectedVideo.topicId && selectedVideo.field && (
+                  <p className="text-purple-600 text-xs md:text-sm">{selectedVideo.field}</p>
+                )}
+              </div>
+              <button
+                onClick={() => setSelectedVideo(null)}
+                className="text-gray-500 hover:text-gray-700 px-3 md:px-4 py-2 text-sm md:text-base"
+              >
+                Đóng
+              </button>
+            </div>
+            <div className="aspect-video">
+              <iframe
+                src={convertToEmbedUrl(selectedVideo.videoUrl)}
+                className="w-full h-full"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Matching Game Modal */}
+      {selectedMatchingExercise && (
+        <MatchingGame
+          exercise={selectedMatchingExercise}
+          onClose={() => setSelectedMatchingExercise(null)}
+        />
+      )}
+
+      {/* Quiz Game Modal */}
+      {selectedQuizExercise && (
+        <QuizGame
+          exercise={selectedQuizExercise}
+          onClose={() => setSelectedQuizExercise(null)}
+        />
+      )}
     </div>
   );
 }
