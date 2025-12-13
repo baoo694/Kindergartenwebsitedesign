@@ -53,7 +53,8 @@
     },
     build: {
       target: 'esnext',
-      outDir: 'build',
+    // Use Vercel-compatible default output directory
+    outDir: 'dist',
     },
     server: {
       port: 3000,
