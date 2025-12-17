@@ -163,64 +163,71 @@ function MatchingGameContent({ exercise, onClose }: MatchingGameProps) {
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-2 md:p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-7xl w-full p-4 md:p-8 my-4 md:my-8 max-h-[95vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-4 md:mb-6">
-          <h2 className="text-purple-600 text-lg md:text-2xl">{exercise.title}</h2>
+      <div className="bg-white rounded-2xl max-w-7xl w-full p-3 md:p-5 my-3 md:my-6 max-h-[95vh] flex flex-col">
+        <div className="flex items-center justify-between mb-1 md:mb-2 flex-none">
+          <h2 className="text-purple-600 text-xs md:text-base font-semibold truncate pr-2">
+            {exercise.title}
+          </h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 px-2 md:px-4 py-2 text-base md:text-lg"
+            className="text-gray-500 hover:text-gray-700 p-0.5 text-xs md:text-sm leading-none"
+            aria-label="Đóng"
           >
-            ✕ Đóng
+            ✕
           </button>
         </div>
 
-        {isComplete && (
-          <div className="bg-green-100 border-4 border-green-500 rounded-xl p-4 md:p-6 mb-4 md:mb-6 text-center">
-            <h3 className="text-green-600 mb-2 text-xl md:text-2xl">🎉 Chúc mừng bé! 🎉</h3>
-            <p className="text-green-700 text-base md:text-lg">Bé đã hoàn thành tất cả!</p>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8">
-          {/* Drop Zones */}
-          <div>
-            <h3 className="text-gray-700 mb-3 md:mb-4 text-base md:text-lg">Ghép đúng tên cho mỗi hình:</h3>
-            <div className="grid grid-cols-2 gap-2 md:gap-4">
-              {normalizedPairs.map((pair, index) => {
-                const prompt = (pair as any).left;
-                const isImagePrompt = isImageLike(prompt);
-                return (
-                <DropZone
-                  key={index}
-                  prompt={prompt}
-                  correctText={(pair as any).right}
-                  onDrop={(text) => handleDrop(index, text)}
-                  droppedText={droppedTexts[index] || null}
-                  isImagePrompt={isImagePrompt}
-                />
-              )})}
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto pr-1">
+          {isComplete && (
+            <div className="bg-green-100 border-4 border-green-500 rounded-xl p-4 md:p-6 mb-4 md:mb-6 text-center">
+              <h3 className="text-green-600 mb-2 text-xl md:text-2xl">🎉 Chúc mừng bé! 🎉</h3>
+              <p className="text-green-700 text-base md:text-lg">Bé đã hoàn thành tất cả!</p>
             </div>
-          </div>
+          )}
 
-          {/* Draggable Texts */}
-          <div>
-            <h3 className="text-gray-700 mb-3 md:mb-4 text-base md:text-lg">Kéo tên vào vị trí đúng:</h3>
-            <div className="flex flex-col gap-2 md:gap-4">
-              {shuffledTexts.map((text, index) => {
-                const isUsed = Object.values(droppedTexts).includes(text);
-                if (isUsed) return null;
-                // Calculate isImage inline to avoid index mismatch after shuffling
-                const isImage = isImageLike(text);
-                return <DraggableText key={index} text={text} id={index} isImage={isImage} />;
-              })}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-8">
+            {/* Drop Zones */}
+            <div>
+              <h3 className="text-gray-700 mb-3 md:mb-4 text-base md:text-lg">Ghép đúng tên cho mỗi hình:</h3>
+              <div className="grid grid-cols-2 gap-2 md:gap-4">
+                {normalizedPairs.map((pair, index) => {
+                  const prompt = (pair as any).left;
+                  const isImagePrompt = isImageLike(prompt);
+                  return (
+                  <DropZone
+                    key={index}
+                    prompt={prompt}
+                    correctText={(pair as any).right}
+                    onDrop={(text) => handleDrop(index, text)}
+                    droppedText={droppedTexts[index] || null}
+                    isImagePrompt={isImagePrompt}
+                  />
+                )})}
+              </div>
+            </div>
+
+            {/* Draggable Texts */}
+            <div>
+              <h3 className="text-gray-700 mb-3 md:mb-4 text-base md:text-lg">Kéo tên vào vị trí đúng:</h3>
+              <div className="grid grid-cols-2 gap-2 md:gap-4">
+                {shuffledTexts.map((text, index) => {
+                  const isUsed = Object.values(droppedTexts).includes(text);
+                  if (isUsed) return null;
+                  // Calculate isImage inline to avoid index mismatch after shuffling
+                  const isImage = isImageLike(text);
+                  return <DraggableText key={index} text={text} id={index} isImage={isImage} />;
+                })}
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="mt-4 md:mt-6 flex gap-2 md:gap-4">
+        {/* Fixed footer */}
+        <div className="pt-2 md:pt-3 mt-2 md:mt-3 border-t flex justify-center flex-none bg-white">
           <button
             onClick={handleReset}
-            className="bg-orange-500 text-white px-6 md:px-8 py-3 md:py-4 rounded-lg hover:bg-orange-600 transition text-base md:text-lg"
+            className="bg-orange-500 text-white px-4 md:px-6 py-2 md:py-2.5 rounded-lg hover:bg-orange-600 transition text-sm md:text-base"
           >
             🔄 Chơi lại
           </button>
