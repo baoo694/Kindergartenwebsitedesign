@@ -175,16 +175,35 @@ app.get('/make-server-2e8b32fc/matching-exercises', async (c) => {
         if (exercise.pairs && Array.isArray(exercise.pairs)) {
           exercise.pairs = await Promise.all(
             exercise.pairs.map(async (pair: any) => {
-              if (pair.image && pair.image.startsWith('supabase://')) {
-                const path = pair.image.replace('supabase://', '');
+              // backward compatible fields: image/text or left/right
+              const leftPath = pair.left || pair.image;
+              const rightPath = pair.right || pair.text;
+
+              if (leftPath && typeof leftPath === 'string' && leftPath.startsWith('supabase://')) {
+                const path = leftPath.replace('supabase://', '');
                 const { data } = await supabase.storage
                   .from(BUCKET_NAME)
                   .createSignedUrl(path, 3600);
                 if (data?.signedUrl) {
-                  pair.image = data.signedUrl;
+                  pair.left = data.signedUrl;
                 }
               }
-              return pair;
+
+              if (rightPath && typeof rightPath === 'string' && rightPath.startsWith('supabase://')) {
+                const path = rightPath.replace('supabase://', '');
+                const { data } = await supabase.storage
+                  .from(BUCKET_NAME)
+                  .createSignedUrl(path, 3600);
+                if (data?.signedUrl) {
+                  pair.right = data.signedUrl;
+                }
+              }
+
+              return {
+                ...pair,
+                left: pair.left ?? leftPath ?? '',
+                right: pair.right ?? rightPath ?? '',
+              };
             })
           );
         }
@@ -224,6 +243,26 @@ app.put('/make-server-2e8b32fc/matching-exercises/:id', async (c) => {
 app.delete('/make-server-2e8b32fc/matching-exercises/:id', async (c) => {
   try {
     const id = c.req.param('id');
+    const exercise = await kv.get(`matching:${id}`);
+
+    // Delete associated files from storage
+    if (exercise?.pairs && Array.isArray(exercise.pairs)) {
+      const pathsToRemove: string[] = [];
+      exercise.pairs.forEach((pair: any) => {
+        const leftPath = pair.left || pair.image;
+        const rightPath = pair.right || pair.text;
+        if (leftPath && typeof leftPath === 'string' && leftPath.startsWith('supabase://')) {
+          pathsToRemove.push(leftPath.replace('supabase://', ''));
+        }
+        if (rightPath && typeof rightPath === 'string' && rightPath.startsWith('supabase://')) {
+          pathsToRemove.push(rightPath.replace('supabase://', ''));
+        }
+      });
+      if (pathsToRemove.length > 0) {
+        await supabase.storage.from(BUCKET_NAME).remove(pathsToRemove);
+      }
+    }
+
     await kv.del(`matching:${id}`);
     return c.json({ success: true });
   } catch (error) {
