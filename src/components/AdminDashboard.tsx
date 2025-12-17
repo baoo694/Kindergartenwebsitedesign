@@ -59,8 +59,10 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
     title: '', 
     pairs: [{ left: '', right: '' }] 
   });
-  const [pairImageFiles, setPairImageFiles] = useState<(File | null)[]>([null]);
-  const [pairImagePreviews, setPairImagePreviews] = useState<string[]>(['']);
+  const [pairImageFiles, setPairImageFiles] = useState<(File | null)[]>([null]); // left upload
+  const [pairImagePreviews, setPairImagePreviews] = useState<string[]>(['']); // left preview
+  const [pairRightImageFiles, setPairRightImageFiles] = useState<(File | null)[]>([null]); // right upload
+  const [pairRightImagePreviews, setPairRightImagePreviews] = useState<string[]>(['']); // right preview
   
   // Quiz Exercise Form
   const [quizForm, setQuizForm] = useState({
@@ -371,6 +373,12 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
           updatedPairs[i].left = imageUrl;
         }
       }
+      for (let i = 0; i < pairRightImageFiles.length; i++) {
+        if (pairRightImageFiles[i]) {
+          const imageUrl = await handleUploadImage(pairRightImageFiles[i]!);
+          updatedPairs[i].right = imageUrl;
+        }
+      }
 
       const newExercise: MatchingExercise = {
         id: Date.now().toString(),
@@ -397,6 +405,8 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
       setMatchingForm({ assignType: 'topic', topicId: '', field: '', category: 'nursery', title: '', pairs: [{ left: '', right: '' }] });
       setPairImageFiles([null]);
       setPairImagePreviews(['']);
+      setPairRightImageFiles([null]);
+      setPairRightImagePreviews(['']);
     } catch (error) {
       console.error('Error adding matching exercise:', error);
       alert('Lỗi khi thêm bài ghép hình: ' + (error as Error).message);
@@ -421,6 +431,8 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
     });
     setPairImageFiles(new Array(exercise.pairs.length).fill(null));
     setPairImagePreviews(exercise.pairs.map(p => (p as any).left ?? (p as any).image ?? ''));
+    setPairRightImageFiles(new Array(exercise.pairs.length).fill(null));
+    setPairRightImagePreviews(exercise.pairs.map(p => (p as any).right ?? (p as any).text ?? ''));
     setShowAddModal(true);
   };
 
@@ -434,6 +446,12 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
         if (pairImageFiles[i]) {
           const imageUrl = await handleUploadImage(pairImageFiles[i]!);
           updatedPairs[i].left = imageUrl;
+        }
+      }
+      for (let i = 0; i < pairRightImageFiles.length; i++) {
+        if (pairRightImageFiles[i]) {
+          const imageUrl = await handleUploadImage(pairRightImageFiles[i]!);
+          updatedPairs[i].right = imageUrl;
         }
       }
 
@@ -463,6 +481,8 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
       setMatchingForm({ assignType: 'topic', topicId: '', field: '', category: 'nursery', title: '', pairs: [{ left: '', right: '' }] });
       setPairImageFiles([null]);
       setPairImagePreviews(['']);
+      setPairRightImageFiles([null]);
+      setPairRightImagePreviews(['']);
     } catch (error) {
       console.error('Error updating matching exercise:', error);
       alert('Lỗi khi cập nhật bài ghép hình: ' + (error as Error).message);
@@ -1403,8 +1423,8 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
                   <label className="block mb-2">Các cặp ghép</label>
                   {matchingForm.pairs.map((pair, index) => (
                     <div key={index} className="mb-4 p-4 border rounded-lg bg-gray-50">
-                      <div className="flex gap-2 mb-2">
-                        <div className="w-1/2">
+                      <div className="flex flex-col md:flex-row gap-2 md:gap-3 mb-2">
+                        <div className="md:w-1/2 w-full">
                           <label className="block text-sm mb-1 text-gray-600">Mặt A (URL ảnh hoặc Emoji hoặc Upload)</label>
                           <div className="relative">
                             <input
@@ -1468,28 +1488,82 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
                             </div>
                           )}
                         </div>
-                        <div className="w-1/2">
-                          <label className="block text-sm mb-1 text-gray-600">Mặt B (URL ảnh / Emoji / chữ)</label>
-                          <input
-                            type="text"
-                            value={pair.right}
-                            onChange={(e) => {
-                              const newPairs = [...matchingForm.pairs];
-                              newPairs[index].right = e.target.value;
-                              setMatchingForm({ ...matchingForm, pairs: newPairs });
-                            }}
-                            className="w-full px-4 py-2 border rounded-lg"
-                            placeholder="https://... hoặc 🎯"
-                          />
+                        <div className="md:w-1/2 w-full">
+                          <label className="block text-sm mb-1 text-gray-600">Mặt B (URL ảnh / Emoji / chữ hoặc Upload)</label>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={pairRightImageFiles[index] ? pairRightImageFiles[index]!.name : pair.right}
+                              onChange={(e) => {
+                                const newPairs = [...matchingForm.pairs];
+                                newPairs[index].right = e.target.value;
+                                setMatchingForm({ ...matchingForm, pairs: newPairs });
+                              }}
+                              className="w-full px-4 py-2 border rounded-lg pr-12"
+                              placeholder="https://... hoặc 🎯"
+                              readOnly={!!pairRightImageFiles[index]}
+                            />
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0] || null;
+                                const newFiles = [...pairRightImageFiles];
+                                newFiles[index] = file;
+                                setPairRightImageFiles(newFiles);
+                                
+                                if (file) {
+                                  const reader = new FileReader();
+                                  reader.onloadend = () => {
+                                    const newPreviews = [...pairRightImagePreviews];
+                                    newPreviews[index] = reader.result as string;
+                                    setPairRightImagePreviews(newPreviews);
+                                  };
+                                  reader.readAsDataURL(file);
+                                }
+                              }}
+                              className="hidden"
+                              id={`pair-right-image-${index}`}
+                            />
+                            <label
+                              htmlFor={`pair-right-image-${index}`}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-purple-600 hover:text-purple-800 cursor-pointer hover:bg-purple-50 rounded"
+                              title="Upload hình ảnh"
+                            >
+                              <Upload className="w-5 h-5" />
+                            </label>
+                          </div>
+                          {pairRightImageFiles[index] && (
+                            <div className="mt-1 flex items-center gap-2 text-sm text-green-600">
+                              <span>✓ {pairRightImageFiles[index]!.name}</span>
+                              <button
+                                onClick={() => {
+                                  const newFiles = [...pairRightImageFiles];
+                                  newFiles[index] = null;
+                                  setPairRightImageFiles(newFiles);
+                                  const newPreviews = [...pairRightImagePreviews];
+                                  newPreviews[index] = pair.right;
+                                  setPairRightImagePreviews(newPreviews);
+                                }}
+                                className="text-red-600 hover:text-red-800"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          )}
                         </div>
                         <button
                           onClick={() => {
                             const newPairs = matchingForm.pairs.filter((_, i) => i !== index);
                             const newFiles = pairImageFiles.filter((_, i) => i !== index);
                             const newPreviews = pairImagePreviews.filter((_, i) => i !== index);
+                            const newRightFiles = pairRightImageFiles.filter((_, i) => i !== index);
+                            const newRightPreviews = pairRightImagePreviews.filter((_, i) => i !== index);
                             setMatchingForm({ ...matchingForm, pairs: newPairs });
                             setPairImageFiles(newFiles);
                             setPairImagePreviews(newPreviews);
+                            setPairRightImageFiles(newRightFiles);
+                            setPairRightImagePreviews(newRightPreviews);
                           }}
                           className="text-red-600 hover:text-red-800 px-2 self-end mb-1"
                           title="Xóa cặp"
@@ -1498,18 +1572,33 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
                         </button>
                       </div>
                       {/* Preview */}
-                  {pairImagePreviews[index] && (
+                      {(pairImagePreviews[index] || pairRightImagePreviews[index]) && (
                         <div className="mt-2">
                           <p className="text-sm text-gray-600 mb-1">Xem trước:</p>
-                          {pairImagePreviews[index].startsWith('http') || pairImagePreviews[index].startsWith('data:') || pairImagePreviews[index].startsWith('supabase://') ? (
-                            <img 
-                              src={pairImagePreviews[index]} 
-                              alt="Preview" 
-                              className="w-20 h-20 object-cover rounded border"
-                            />
-                          ) : (
-                            <div className="text-4xl">{pairImagePreviews[index]}</div>
-                          )}
+                          <div className="flex gap-3 items-center">
+                            {pairImagePreviews[index] && (
+                              pairImagePreviews[index].startsWith('http') || pairImagePreviews[index].startsWith('data:') || pairImagePreviews[index].startsWith('supabase://') ? (
+                                <img 
+                                  src={pairImagePreviews[index]} 
+                                  alt="Preview A" 
+                                  className="w-16 h-16 object-cover rounded border"
+                                />
+                              ) : (
+                                <div className="text-3xl">{pairImagePreviews[index]}</div>
+                              )
+                            )}
+                            {pairRightImagePreviews[index] && (
+                              pairRightImagePreviews[index].startsWith('http') || pairRightImagePreviews[index].startsWith('data:') || pairRightImagePreviews[index].startsWith('supabase://') ? (
+                                <img 
+                                  src={pairRightImagePreviews[index]} 
+                                  alt="Preview B" 
+                                  className="w-16 h-16 object-cover rounded border"
+                                />
+                              ) : (
+                                <div className="text-3xl">{pairRightImagePreviews[index]}</div>
+                              )
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1519,6 +1608,8 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
                       setMatchingForm({ ...matchingForm, pairs: [...matchingForm.pairs, { left: '', right: '' }] });
                       setPairImageFiles([...pairImageFiles, null]);
                       setPairImagePreviews([...pairImagePreviews, '']);
+                      setPairRightImageFiles([...pairRightImageFiles, null]);
+                      setPairRightImagePreviews([...pairRightImagePreviews, '']);
                     }}
                     className="text-purple-600 hover:text-purple-800 flex items-center gap-2"
                   >
