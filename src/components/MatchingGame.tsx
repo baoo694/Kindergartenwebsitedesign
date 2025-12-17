@@ -41,6 +41,9 @@ const DraggableText = ({ text, id, isImage }: DraggableTextProps) => {
     }),
   }));
 
+  // Check if text is a valid image URL (http/https or data URI - NOT supabase://)
+  const isValidImageUrl = text.startsWith('http') || text.startsWith('data:');
+
   return (
     <div
       ref={drag}
@@ -49,7 +52,7 @@ const DraggableText = ({ text, id, isImage }: DraggableTextProps) => {
       }`}
     >
       {isImage ? (
-        text.startsWith('http') || text.startsWith('data:') || text.startsWith('supabase://') ? (
+        isValidImageUrl ? (
           <img src={text} alt="Draggable" className="w-14 h-14 object-cover rounded-md" />
         ) : (
           <span className="text-3xl md:text-4xl">{text}</span>
@@ -73,6 +76,8 @@ const DropZone = ({ prompt, correctText, onDrop, droppedText, isImagePrompt }: D
   }));
 
   const isCorrect = droppedText === correctText;
+  // Check if prompt is a valid image URL (http/https or data URI - NOT supabase://)
+  const isValidImageUrl = prompt.startsWith('http') || prompt.startsWith('data:');
 
   return (
     <div
@@ -83,7 +88,7 @@ const DropZone = ({ prompt, correctText, onDrop, droppedText, isImagePrompt }: D
     >
       <div className="mb-2 md:mb-4">
         {isImagePrompt ? (
-          prompt.startsWith('http') || prompt.startsWith('data:') || prompt.startsWith('supabase://') ? (
+          isValidImageUrl ? (
             <img src={prompt} alt="Matching item" className="w-20 h-20 md:w-32 md:h-32 object-cover rounded-lg" />
           ) : (
             <div className="text-5xl md:text-8xl">{prompt}</div>
@@ -112,7 +117,6 @@ function MatchingGameContent({ exercise, onClose }: MatchingGameProps) {
   const [droppedTexts, setDroppedTexts] = useState<{ [key: number]: string }>({});
   const [shuffledTexts, setShuffledTexts] = useState<string[]>([]);
   const [isComplete, setIsComplete] = useState(false);
-  const [isImageFlags, setIsImageFlags] = useState<boolean[]>([]);
 
   // Normalize supabase:// links to public URLs on the client (fallback if backend hasn't signed yet)
   const normalizedPairs = useMemo(() => {
@@ -122,11 +126,10 @@ function MatchingGameContent({ exercise, onClose }: MatchingGameProps) {
     }));
   }, [exercise.pairs]);
 
-  // Normalize supabase:// links to public URLs on the client (fallback if backend hasn't signed yet)
+  // Shuffle texts when pairs change
   useEffect(() => {
     const texts = normalizedPairs.map(p => p.right);
     setShuffledTexts(texts.sort(() => Math.random() - 0.5));
-    setIsImageFlags(normalizedPairs.map(p => isImageLike(p.right)));
   }, [normalizedPairs]);
 
   const handleDrop = (index: number, text: string) => {
@@ -196,7 +199,8 @@ function MatchingGameContent({ exercise, onClose }: MatchingGameProps) {
               {shuffledTexts.map((text, index) => {
                 const isUsed = Object.values(droppedTexts).includes(text);
                 if (isUsed) return null;
-                const isImage = isImageFlags[index];
+                // Calculate isImage inline to avoid index mismatch after shuffling
+                const isImage = isImageLike(text);
                 return <DraggableText key={index} text={text} id={index} isImage={isImage} />;
               })}
             </div>

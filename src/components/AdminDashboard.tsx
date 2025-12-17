@@ -2,7 +2,16 @@ import { useState, useEffect } from 'react';
 import { LogOut, Plus, Edit2, Trash2, Video, BookOpen, GamepadIcon, Upload, Layers } from 'lucide-react';
 import type { AppData, Topic, Video as VideoType, MatchingExercise, QuizExercise, Field } from '../App';
 import { projectId, publicAnonKey } from '../utils/supabase/info';
-import { convertToEmbedUrl } from '../utils/videoUtils';
+import { convertToEmbedUrl, convertSupabaseUrl } from '../utils/videoUtils';
+
+// Helper function to get valid image URL for preview
+const getPreviewUrl = (url: string): string => {
+  if (!url) return '';
+  if (url.startsWith('supabase://')) {
+    return convertSupabaseUrl(url, projectId);
+  }
+  return url;
+};
 
 type AdminDashboardProps = {
   appData: AppData;
@@ -879,7 +888,7 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
                           : ''}
                     </td>
                     <td className="px-6 py-4">
-                      <img src={video.thumbnail} alt={video.title} className="w-16 h-16 object-cover rounded" />
+                      <img src={getPreviewUrl(video.thumbnail)} alt={video.title} className="w-16 h-16 object-cover rounded" />
                     </td>
                     <td className="px-6 py-4 text-right">
                       <button
@@ -1290,7 +1299,7 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
                         <div>
                           <p className="text-sm text-gray-600 mb-2">Thumbnail</p>
                           <img 
-                            src={thumbnailPreview} 
+                            src={getPreviewUrl(thumbnailPreview)} 
                             alt="Thumbnail preview" 
                             className="w-full h-40 object-cover rounded-lg border"
                           />
@@ -1307,7 +1316,7 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
                             />
                           ) : (
                             <video
-                              src={videoPreview}
+                              src={getPreviewUrl(videoPreview)}
                               controls
                               className="w-full h-40 rounded-lg border object-cover"
                             />
@@ -1579,7 +1588,7 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
                             {pairImagePreviews[index] && (
                               pairImagePreviews[index].startsWith('http') || pairImagePreviews[index].startsWith('data:') || pairImagePreviews[index].startsWith('supabase://') ? (
                                 <img 
-                                  src={pairImagePreviews[index]} 
+                                  src={getPreviewUrl(pairImagePreviews[index])} 
                                   alt="Preview A" 
                                   className="w-16 h-16 object-cover rounded border"
                                 />
@@ -1590,7 +1599,7 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
                             {pairRightImagePreviews[index] && (
                               pairRightImagePreviews[index].startsWith('http') || pairRightImagePreviews[index].startsWith('data:') || pairRightImagePreviews[index].startsWith('supabase://') ? (
                                 <img 
-                                  src={pairRightImagePreviews[index]} 
+                                  src={getPreviewUrl(pairRightImagePreviews[index])} 
                                   alt="Preview B" 
                                   className="w-16 h-16 object-cover rounded border"
                                 />

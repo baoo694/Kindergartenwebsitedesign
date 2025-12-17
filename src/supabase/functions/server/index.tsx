@@ -25,9 +25,14 @@ async function initializeBucket() {
     const bucketExists = buckets?.some(bucket => bucket.name === BUCKET_NAME);
     if (!bucketExists) {
       await supabase.storage.createBucket(BUCKET_NAME, {
-        public: false,
+        public: true, // Changed to public so images can be accessed directly
       });
       console.log(`Created bucket: ${BUCKET_NAME}`);
+    } else {
+      // Update existing bucket to be public
+      await supabase.storage.updateBucket(BUCKET_NAME, {
+        public: true,
+      });
     }
   } catch (error) {
     console.error('Error initializing bucket:', error);

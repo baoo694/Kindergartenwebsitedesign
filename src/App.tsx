@@ -142,9 +142,20 @@ type Page = 'home' | 'topics' | 'videos' | 'exercises' | 'admin-login' | 'admin-
 const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-2e8b32fc`;
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState<Page>('home');
+  // Load saved state from localStorage
+  const [currentPage, setCurrentPage] = useState<Page>(() => {
+    const savedPage = localStorage.getItem('currentPage');
+    const savedIsAdmin = localStorage.getItem('isAdmin') === 'true';
+    // Only restore admin-dashboard if user is still logged in
+    if (savedPage === 'admin-dashboard' && savedIsAdmin) {
+      return 'admin-dashboard';
+    }
+    return 'home';
+  });
   const [appData, setAppData] = useState<AppData>(initialData);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(() => {
+    return localStorage.getItem('isAdmin') === 'true';
+  });
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
   const [selectedFieldName, setSelectedFieldName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -296,6 +307,9 @@ export default function App() {
     if (username === 'admin' && password === 'admin123') {
       setIsAdmin(true);
       setCurrentPage('admin-dashboard');
+      // Save login state to localStorage
+      localStorage.setItem('isAdmin', 'true');
+      localStorage.setItem('currentPage', 'admin-dashboard');
       return true;
     }
     return false;
@@ -304,6 +318,9 @@ export default function App() {
   const handleLogout = () => {
     setIsAdmin(false);
     setCurrentPage('home');
+    // Clear login state from localStorage
+    localStorage.removeItem('isAdmin');
+    localStorage.removeItem('currentPage');
   };
 
   return (
