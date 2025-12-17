@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import type { MatchingExercise } from '../App';
+import { projectId } from '../utils/supabase/info';
+import { convertSupabaseUrl } from '../utils/videoUtils';
 
 const isImageLike = (value?: string) => {
   if (!value) return false;
@@ -111,11 +113,20 @@ function MatchingGameContent({ exercise, onClose }: MatchingGameProps) {
   const [shuffledTexts, setShuffledTexts] = useState<string[]>([]);
   const [isComplete, setIsComplete] = useState(false);
   const [isImageFlags, setIsImageFlags] = useState<boolean[]>([]);
+  const [normalizedExercise, setNormalizedExercise] = useState<MatchingExercise>(exercise);
 
+  // Normalize supabase:// links to public URLs on the client (fallback if backend hasn't signed yet)
   useEffect(() => {
-    const texts = exercise.pairs.map(p => (p as any).right);
+    const normalizedPairs = exercise.pairs.map((p: any) => ({
+      left: convertSupabaseUrl(p.left ?? p.image, projectId),
+      right: convertSupabaseUrl(p.right ?? p.text, projectId),
+    }));
+    const normalized = { ...exercise, pairs: normalizedPairs };
+    setNormalizedExercise(normalized);
+
+    const texts = normalizedPairs.map(p => p.right);
     setShuffledTexts(texts.sort(() => Math.random() - 0.5));
-    setIsImageFlags(exercise.pairs.map(p => isImageLike((p as any).right)));
+    setIsImageFlags(normalizedPairs.map(p => isImageLike(p.right)));
   }, [exercise]);
 
   const handleDrop = (index: number, text: string) => {
@@ -123,13 +134,13 @@ function MatchingGameContent({ exercise, onClose }: MatchingGameProps) {
   };
 
   useEffect(() => {
-    const allCorrect = exercise.pairs.every(
+    const allCorrect = normalizedExercise.pairs.every(
       (pair, index) => droppedTexts[index] === (pair as any).right
     );
-    if (allCorrect && Object.keys(droppedTexts).length === exercise.pairs.length) {
+    if (allCorrect && Object.keys(droppedTexts).length === normalizedExercise.pairs.length) {
       setIsComplete(true);
     }
-  }, [droppedTexts, exercise.pairs]);
+  }, [droppedTexts, normalizedExercise.pairs]);
 
   const handleReset = () => {
     setDroppedTexts({});
@@ -162,7 +173,7 @@ function MatchingGameContent({ exercise, onClose }: MatchingGameProps) {
           <div>
             <h3 className="text-gray-700 mb-3 md:mb-4 text-base md:text-lg">Ghép đúng tên cho mỗi hình:</h3>
             <div className="grid grid-cols-2 gap-2 md:gap-4">
-              {exercise.pairs.map((pair, index) => {
+              {normalizedExercise.pairs.map((pair, index) => {
                 const prompt = (pair as any).left;
                 const isImagePrompt = isImageLike(prompt);
                 return (

@@ -19,3 +19,12 @@ export const convertToEmbedUrl = (url: string): string => {
   
   return url;
 };
+
+// Convert supabase://<path> to public URL (if bucket is public)
+export const convertSupabaseUrl = (url: string, projectId?: string, bucket = 'make-2e8b32fc-storage') => {
+  if (!url) return url;
+  if (!url.startsWith('supabase://')) return url;
+  const path = url.replace('supabase://', '');
+  if (!projectId) return url;
+  return `https://${projectId}.supabase.co/storage/v1/object/public/${bucket}/${path}`;
+};
