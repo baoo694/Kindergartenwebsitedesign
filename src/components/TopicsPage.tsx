@@ -1,7 +1,7 @@
 import { ArrowLeft, Baby, GraduationCap } from 'lucide-react';
 import { useState } from 'react';
 import Header from './Header';
-import type { Topic } from '../App';
+import type { Topic, Field } from '../App';
 import { KINDERGARTEN_FIELDS, NURSERY_FIELDS } from '../utils/constants';
 import {
   Accordion,
@@ -12,28 +12,50 @@ import {
 
 type TopicsPageProps = {
   topics: Topic[];
+  fields: Field[];
   navigateTo: (page: string, topicId?: string) => void;
 };
 
-export default function TopicsPage({ topics, navigateTo }: TopicsPageProps) {
+export default function TopicsPage({ topics, fields, navigateTo }: TopicsPageProps) {
   const [activeTab, setActiveTab] = useState<'nursery' | 'kindergarten'>('nursery');
   
   const nurseryTopics = topics.filter(t => t.category === 'nursery');
   const kindergartenTopics = topics.filter(t => t.category === 'kindergarten');
 
+  // Use dynamic fields from server; fallback to defaults if empty
+  const nurseryFields =
+    (fields || [])
+      .filter(f => f.category === 'nursery')
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+  const kindergartenFields =
+    (fields || [])
+      .filter(f => f.category === 'kindergarten')
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+  const nurseryFieldsToUse =
+    nurseryFields.length > 0
+      ? nurseryFields
+      : NURSERY_FIELDS.map((name, idx) => ({ id: `nf-${idx}`, name, category: 'nursery', order: idx + 1 }));
+
+  const kindergartenFieldsToUse =
+    kindergartenFields.length > 0
+      ? kindergartenFields
+      : KINDERGARTEN_FIELDS.map((name, idx) => ({ id: `kf-${idx}`, name, category: 'kindergarten', order: idx + 1 }));
+
   // Nhóm chủ đề Nhà trẻ theo lĩnh vực - hiển thị tất cả 4 lĩnh vực
-  const nurseryTopicsByField = NURSERY_FIELDS.map(field => ({
-    field,
+  const nurseryTopicsByField = nurseryFieldsToUse.map(field => ({
+    field: field.name,
     topics: nurseryTopics
-      .filter(t => t.field === field)
+      .filter(t => t.field === field.name)
       .sort((a, b) => (a.order || 0) - (b.order || 0))
   }));
 
   // Nhóm chủ đề Mẫu giáo theo lĩnh vực - hiển thị tất cả 5 lĩnh vực
-  const kindergartenTopicsByField = KINDERGARTEN_FIELDS.map(field => ({
-    field,
+  const kindergartenTopicsByField = kindergartenFieldsToUse.map(field => ({
+    field: field.name,
     topics: kindergartenTopics
-      .filter(t => t.field === field)
+      .filter(t => t.field === field.name)
       .sort((a, b) => (a.order || 0) - (b.order || 0))
   }));
 

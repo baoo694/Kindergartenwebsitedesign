@@ -3,6 +3,14 @@ import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import type { MatchingExercise } from '../App';
 
+const isImageLike = (value?: string) => {
+  if (!value) return false;
+  if (value.startsWith('http') || value.startsWith('data:') || value.startsWith('supabase://')) return true;
+  // Basic emoji range check
+  const emojiRegex = /[\u{1F300}-\u{1FAFF}\u2600-\u27BF]/u;
+  return emojiRegex.test(value);
+};
+
 type MatchingGameProps = {
   exercise: MatchingExercise;
   onClose: () => void;
@@ -11,16 +19,18 @@ type MatchingGameProps = {
 type DraggableTextProps = {
   text: string;
   id: number;
+  isImage: boolean;
 };
 
 type DropZoneProps = {
-  image: string;
+  prompt: string;
   correctText: string;
   onDrop: (text: string) => void;
   droppedText: string | null;
+  isImagePrompt: boolean;
 };
 
-const DraggableText = ({ text, id }: DraggableTextProps) => {
+const DraggableText = ({ text, id, isImage }: DraggableTextProps) => {
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'text',
     item: { text },
@@ -36,12 +46,20 @@ const DraggableText = ({ text, id }: DraggableTextProps) => {
         isDragging ? 'opacity-50' : 'opacity-100'
       }`}
     >
-      {text}
+      {isImage ? (
+        text.startsWith('http') || text.startsWith('data:') || text.startsWith('supabase://') ? (
+          <img src={text} alt="Draggable" className="w-14 h-14 object-cover rounded-md" />
+        ) : (
+          <span className="text-3xl md:text-4xl">{text}</span>
+        )
+      ) : (
+        text
+      )}
     </div>
   );
 };
 
-const DropZone = ({ image, correctText, onDrop, droppedText }: DropZoneProps) => {
+const DropZone = ({ prompt, correctText, onDrop, droppedText, isImagePrompt }: DropZoneProps) => {
   const [{ isOver }, drop] = useDrop(() => ({
     accept: 'text',
     drop: (item: { text: string }) => {
@@ -54,9 +72,6 @@ const DropZone = ({ image, correctText, onDrop, droppedText }: DropZoneProps) =>
 
   const isCorrect = droppedText === correctText;
 
-  // Check if image is a URL or emoji
-  const isImageUrl = image.startsWith('http') || image.startsWith('data:') || image.startsWith('supabase://');
-
   return (
     <div
       ref={drop}
@@ -65,10 +80,14 @@ const DropZone = ({ image, correctText, onDrop, droppedText }: DropZoneProps) =>
       } ${isCorrect ? 'bg-green-100 border-green-500' : ''}`}
     >
       <div className="mb-2 md:mb-4">
-        {isImageUrl ? (
-          <img src={image} alt="Matching item" className="w-20 h-20 md:w-32 md:h-32 object-cover rounded-lg" />
+        {isImagePrompt ? (
+          prompt.startsWith('http') || prompt.startsWith('data:') || prompt.startsWith('supabase://') ? (
+            <img src={prompt} alt="Matching item" className="w-20 h-20 md:w-32 md:h-32 object-cover rounded-lg" />
+          ) : (
+            <div className="text-5xl md:text-8xl">{prompt}</div>
+          )
         ) : (
-          <div className="text-5xl md:text-8xl">{image}</div>
+          <div className="text-gray-700 font-semibold text-sm md:text-base">{prompt}</div>
         )}
       </div>
       {droppedText ? (
@@ -91,10 +110,12 @@ function MatchingGameContent({ exercise, onClose }: MatchingGameProps) {
   const [droppedTexts, setDroppedTexts] = useState<{ [key: number]: string }>({});
   const [shuffledTexts, setShuffledTexts] = useState<string[]>([]);
   const [isComplete, setIsComplete] = useState(false);
+  const [isImageFlags, setIsImageFlags] = useState<boolean[]>([]);
 
   useEffect(() => {
-    const texts = exercise.pairs.map(p => p.text);
+    const texts = exercise.pairs.map(p => (p as any).right);
     setShuffledTexts(texts.sort(() => Math.random() - 0.5));
+    setIsImageFlags(exercise.pairs.map(p => isImageLike((p as any).right)));
   }, [exercise]);
 
   const handleDrop = (index: number, text: string) => {
@@ -103,7 +124,7 @@ function MatchingGameContent({ exercise, onClose }: MatchingGameProps) {
 
   useEffect(() => {
     const allCorrect = exercise.pairs.every(
-      (pair, index) => droppedTexts[index] === pair.text
+      (pair, index) => droppedTexts[index] === (pair as any).right
     );
     if (allCorrect && Object.keys(droppedTexts).length === exercise.pairs.length) {
       setIsComplete(true);
@@ -141,15 +162,19 @@ function MatchingGameContent({ exercise, onClose }: MatchingGameProps) {
           <div>
             <h3 className="text-gray-700 mb-3 md:mb-4 text-base md:text-lg">Ghép đúng tên cho mỗi hình:</h3>
             <div className="grid grid-cols-2 gap-2 md:gap-4">
-              {exercise.pairs.map((pair, index) => (
+              {exercise.pairs.map((pair, index) => {
+                const prompt = (pair as any).left;
+                const isImagePrompt = isImageLike(prompt);
+                return (
                 <DropZone
                   key={index}
-                  image={pair.image}
-                  correctText={pair.text}
+                  prompt={prompt}
+                  correctText={(pair as any).right}
                   onDrop={(text) => handleDrop(index, text)}
                   droppedText={droppedTexts[index] || null}
+                  isImagePrompt={isImagePrompt}
                 />
-              ))}
+              )})}
             </div>
           </div>
 
@@ -160,7 +185,8 @@ function MatchingGameContent({ exercise, onClose }: MatchingGameProps) {
               {shuffledTexts.map((text, index) => {
                 const isUsed = Object.values(droppedTexts).includes(text);
                 if (isUsed) return null;
-                return <DraggableText key={index} text={text} id={index} />;
+                const isImage = isImageFlags[index];
+                return <DraggableText key={index} text={text} id={index} isImage={isImage} />;
               })}
             </div>
           </div>

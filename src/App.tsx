@@ -35,7 +35,8 @@ export type MatchingExercise = {
   field?: string; // Lĩnh vực - nếu bài tập thuộc lĩnh vực
   category?: 'nursery' | 'kindergarten'; // Danh mục - nếu bài tập thuộc lĩnh vực
   title: string;
-  pairs: { image: string; text: string }[];
+  // left/right cho phép ghép: ảnh-ảnh, icon-icon, ảnh-icon, text-text
+  pairs: { left: string; right: string }[];
 };
 
 export type QuizExercise = {
@@ -95,10 +96,10 @@ const initialData: AppData = {
       topicId: '2',
       title: 'Ghép đồ chơi với tên',
       pairs: [
-        { image: '🎨', text: 'Bút màu' },
-        { image: '⚽', text: 'Bóng đá' },
-        { image: '🧸', text: 'Gấu bông' },
-        { image: '🚗', text: 'Ô tô' },
+        { left: '🎨', right: 'Bút màu' },
+        { left: '⚽', right: 'Bóng đá' },
+        { left: '🧸', right: 'Gấu bông' },
+        { left: '🚗', right: 'Ô tô' },
       ],
     },
   ],
@@ -236,7 +237,14 @@ export default function App() {
       setAppData({
         topics: fullyMigratedTopics || [],
         videos: videos.videos || [],
-        matchingExercises: matching.exercises || [],
+        matchingExercises: (matching.exercises || []).map((exercise: MatchingExercise) => ({
+          ...exercise,
+          // Hỗ trợ dữ liệu cũ image/text
+          pairs: (exercise.pairs || []).map((pair: any) => ({
+            left: pair.left ?? pair.image ?? '',
+            right: pair.right ?? pair.text ?? '',
+          })),
+        })),
         quizExercises: quiz.exercises || [],
         fields: fields.fields || [],
       });
@@ -313,7 +321,7 @@ export default function App() {
             <HomePage navigateTo={navigateTo} />
           )}
           {currentPage === 'topics' && (
-            <TopicsPage topics={appData.topics} navigateTo={navigateTo} />
+            <TopicsPage topics={appData.topics} fields={appData.fields} navigateTo={navigateTo} />
           )}
           {currentPage === 'topic-detail' && selectedTopicId && (
             <TopicDetail

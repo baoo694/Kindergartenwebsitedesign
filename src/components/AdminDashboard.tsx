@@ -57,7 +57,7 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
     field: '', 
     category: 'nursery' as 'nursery' | 'kindergarten',
     title: '', 
-    pairs: [{ image: '', text: '' }] 
+    pairs: [{ left: '', right: '' }] 
   });
   const [pairImageFiles, setPairImageFiles] = useState<(File | null)[]>([null]);
   const [pairImagePreviews, setPairImagePreviews] = useState<string[]>(['']);
@@ -368,7 +368,7 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
       for (let i = 0; i < pairImageFiles.length; i++) {
         if (pairImageFiles[i]) {
           const imageUrl = await handleUploadImage(pairImageFiles[i]!);
-          updatedPairs[i].image = imageUrl;
+          updatedPairs[i].left = imageUrl;
         }
       }
 
@@ -394,7 +394,7 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
 
       await reloadData();
       setShowAddModal(false);
-      setMatchingForm({ assignType: 'topic', topicId: '', field: '', category: 'nursery', title: '', pairs: [{ image: '', text: '' }] });
+      setMatchingForm({ assignType: 'topic', topicId: '', field: '', category: 'nursery', title: '', pairs: [{ left: '', right: '' }] });
       setPairImageFiles([null]);
       setPairImagePreviews(['']);
     } catch (error) {
@@ -414,10 +414,13 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
       field: exercise.field || '',
       category: exercise.category || 'nursery',
       title: exercise.title, 
-      pairs: exercise.pairs 
+      pairs: exercise.pairs.map(p => ({
+        left: (p as any).left ?? (p as any).image ?? '',
+        right: (p as any).right ?? (p as any).text ?? '',
+      })) 
     });
     setPairImageFiles(new Array(exercise.pairs.length).fill(null));
-    setPairImagePreviews(exercise.pairs.map(p => p.image));
+    setPairImagePreviews(exercise.pairs.map(p => (p as any).left ?? (p as any).image ?? ''));
     setShowAddModal(true);
   };
 
@@ -430,7 +433,7 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
       for (let i = 0; i < pairImageFiles.length; i++) {
         if (pairImageFiles[i]) {
           const imageUrl = await handleUploadImage(pairImageFiles[i]!);
-          updatedPairs[i].image = imageUrl;
+          updatedPairs[i].left = imageUrl;
         }
       }
 
@@ -457,7 +460,7 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
       await reloadData();
       setShowAddModal(false);
       setEditingItem(null);
-      setMatchingForm({ assignType: 'topic', topicId: '', field: '', category: 'nursery', title: '', pairs: [{ image: '', text: '' }] });
+      setMatchingForm({ assignType: 'topic', topicId: '', field: '', category: 'nursery', title: '', pairs: [{ left: '', right: '' }] });
       setPairImageFiles([null]);
       setPairImagePreviews(['']);
     } catch (error) {
@@ -1402,14 +1405,14 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
                     <div key={index} className="mb-4 p-4 border rounded-lg bg-gray-50">
                       <div className="flex gap-2 mb-2">
                         <div className="w-1/2">
-                          <label className="block text-sm mb-1 text-gray-600">Hình ảnh (URL hoặc Emoji hoặc Upload)</label>
+                          <label className="block text-sm mb-1 text-gray-600">Mặt A (URL ảnh hoặc Emoji hoặc Upload)</label>
                           <div className="relative">
                             <input
                               type="text"
-                              value={pairImageFiles[index] ? pairImageFiles[index]!.name : pair.image}
+                              value={pairImageFiles[index] ? pairImageFiles[index]!.name : pair.left}
                               onChange={(e) => {
                                 const newPairs = [...matchingForm.pairs];
-                                newPairs[index].image = e.target.value;
+                                newPairs[index].left = e.target.value;
                                 setMatchingForm({ ...matchingForm, pairs: newPairs });
                               }}
                               className="w-full px-4 py-2 border rounded-lg pr-12"
@@ -1455,7 +1458,7 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
                                   newFiles[index] = null;
                                   setPairImageFiles(newFiles);
                                   const newPreviews = [...pairImagePreviews];
-                                  newPreviews[index] = pair.image;
+                                  newPreviews[index] = pair.left;
                                   setPairImagePreviews(newPreviews);
                                 }}
                                 className="text-red-600 hover:text-red-800"
@@ -1466,17 +1469,17 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
                           )}
                         </div>
                         <div className="w-1/2">
-                          <label className="block text-sm mb-1 text-gray-600">Tên</label>
+                          <label className="block text-sm mb-1 text-gray-600">Mặt B (URL ảnh / Emoji / chữ)</label>
                           <input
                             type="text"
-                            value={pair.text}
+                            value={pair.right}
                             onChange={(e) => {
                               const newPairs = [...matchingForm.pairs];
-                              newPairs[index].text = e.target.value;
+                              newPairs[index].right = e.target.value;
                               setMatchingForm({ ...matchingForm, pairs: newPairs });
                             }}
                             className="w-full px-4 py-2 border rounded-lg"
-                            placeholder="Tên"
+                            placeholder="https://... hoặc 🎯"
                           />
                         </div>
                         <button
@@ -1495,7 +1498,7 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
                         </button>
                       </div>
                       {/* Preview */}
-                      {pairImagePreviews[index] && (
+                  {pairImagePreviews[index] && (
                         <div className="mt-2">
                           <p className="text-sm text-gray-600 mb-1">Xem trước:</p>
                           {pairImagePreviews[index].startsWith('http') || pairImagePreviews[index].startsWith('data:') || pairImagePreviews[index].startsWith('supabase://') ? (
@@ -1513,7 +1516,7 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
                   ))}
                   <button
                     onClick={() => {
-                      setMatchingForm({ ...matchingForm, pairs: [...matchingForm.pairs, { image: '', text: '' }] });
+                      setMatchingForm({ ...matchingForm, pairs: [...matchingForm.pairs, { left: '', right: '' }] });
                       setPairImageFiles([...pairImageFiles, null]);
                       setPairImagePreviews([...pairImagePreviews, '']);
                     }}
@@ -1542,9 +1545,9 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
                     onClick={() => {
                       setShowAddModal(false);
                       setEditingItem(null);
-                      setMatchingForm({ assignType: 'topic', topicId: '', field: '', category: 'nursery', title: '', pairs: [{ image: '', text: '' }] });
-                      setPairImageFiles([null]);
-                      setPairImagePreviews(['']);
+      setMatchingForm({ assignType: 'topic', topicId: '', field: '', category: 'nursery', title: '', pairs: [{ left: '', right: '' }] });
+      setPairImageFiles([null]);
+      setPairImagePreviews(['']);
                     }}
                     disabled={isUploading}
                     className="flex-1 bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 disabled:bg-gray-400"
