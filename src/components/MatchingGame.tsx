@@ -53,7 +53,7 @@ const DraggableText = ({ text, id, isImage }: DraggableTextProps) => {
     >
       {isImage ? (
         isValidImageUrl ? (
-          <img src={text} alt="Draggable" className="w-14 h-14 object-cover rounded-md" />
+          <img src={text} alt="Draggable" className="w-24 h-24 md:w-32 md:h-32 object-cover rounded-md" />
         ) : (
           <span className="text-3xl md:text-4xl">{text}</span>
         )
@@ -82,14 +82,14 @@ const DropZone = ({ prompt, correctText, onDrop, droppedText, isImagePrompt }: D
   return (
     <div
       ref={drop}
-      className={`border-4 border-dashed rounded-xl p-3 md:p-6 min-h-32 md:min-h-40 flex flex-col items-center justify-center text-center ${
+      className={`border-4 border-dashed rounded-xl p-3 md:p-6 min-h-48 md:min-h-64 flex flex-col items-center justify-center text-center ${
         isOver ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-white'
       } ${isCorrect ? 'bg-green-100 border-green-500' : ''}`}
     >
       <div className="mb-2 md:mb-4">
         {isImagePrompt ? (
           isValidImageUrl ? (
-            <img src={prompt} alt="Matching item" className="w-20 h-20 md:w-32 md:h-32 object-cover rounded-lg" />
+            <img src={prompt} alt="Matching item" className="w-32 h-32 md:w-48 md:h-48 object-cover rounded-lg" />
           ) : (
             <div className="text-5xl md:text-8xl">{prompt}</div>
           )
@@ -99,12 +99,22 @@ const DropZone = ({ prompt, correctText, onDrop, droppedText, isImagePrompt }: D
       </div>
       {droppedText ? (
         <div
-          className={`px-3 md:px-6 py-2 md:py-3 rounded-lg text-sm md:text-base ${
+          className={`px-3 md:px-6 py-2 md:py-3 rounded-lg text-sm md:text-base flex items-center gap-2 ${
             isCorrect ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
           }`}
         >
-          {droppedText}
-          {isCorrect ? ' ✓' : ' ✗'}
+          {/* Check if droppedText is an image URL */}
+          {droppedText.startsWith('http') || droppedText.startsWith('data:') ? (
+            <>
+              <img src={droppedText} alt="Đã chọn" className="w-12 h-12 md:w-16 md:h-16 object-cover rounded" />
+              {isCorrect ? 'Đúng ✓' : 'Sai ✗'}
+            </>
+          ) : (
+            <>
+              {droppedText}
+              {isCorrect ? ' ✓' : ' ✗'}
+            </>
+          )}
         </div>
       ) : (
         <div className="text-gray-400 text-xs md:text-sm">Kéo thả tên vào đây</div>
