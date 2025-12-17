@@ -1,7 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { useMemo, useState, useEffect } from 'react';
 import type { MatchingExercise } from '../App';
 import { projectId } from '../utils/supabase/info';
 import { convertSupabaseUrl } from '../utils/videoUtils';
@@ -146,7 +145,7 @@ function MatchingGameContent({ exercise, onClose }: MatchingGameProps) {
   const handleReset = () => {
     setDroppedTexts({});
     setIsComplete(false);
-    setShuffledTexts(exercise.pairs.map(p => p.text).sort(() => Math.random() - 0.5));
+    setShuffledTexts(normalizedPairs.map(p => p.right).sort(() => Math.random() - 0.5));
   };
 
   return (
