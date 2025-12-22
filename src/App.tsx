@@ -210,7 +210,20 @@ export default function App() {
       const matching = await matchingRes.json();
       const quiz = await quizRes.json();
       const fields = await fieldsRes.json();
-      const documents = await documentsRes.json();
+      
+      // Handle documents endpoint - may not exist if server not deployed yet
+      let documents = { documents: [] };
+      if (documentsRes.ok) {
+        try {
+          documents = await documentsRes.json();
+        } catch (error) {
+          console.warn('Error parsing documents response:', error);
+          documents = { documents: [] };
+        }
+      } else {
+        console.warn('Documents endpoint returned status:', documentsRes.status);
+        documents = { documents: [] };
+      }
 
       // If no data exists, initialize with default data
       if (topics.topics.length === 0 || !fields.fields || fields.fields.length === 0) {
