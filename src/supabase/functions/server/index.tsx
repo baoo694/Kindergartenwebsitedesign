@@ -388,6 +388,101 @@ app.post('/make-server-2e8b32fc/upload-video', async (c) => {
   }
 });
 
+app.post('/make-server-2e8b32fc/upload-document', async (c) => {
+  try {
+    const formData = await c.req.formData();
+    const file = formData.get('file') as File;
+    
+    if (!file) {
+      return c.json({ error: 'No file provided' }, 400);
+    }
+
+    // Validate file type (only allow Word documents)
+    const allowedTypes = [
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-word.document.macroEnabled.12'
+    ];
+    const allowedExtensions = ['doc', 'docx'];
+    const fileExt = file.name.split('.').pop()?.toLowerCase();
+    
+    if (!fileExt || !allowedExtensions.includes(fileExt)) {
+      return c.json({ error: 'Invalid file type. Only Word documents (.doc, .docx) are allowed' }, 400);
+    }
+
+    const fileName = `${crypto.randomUUID()}.${fileExt}`;
+    const filePath = `documents/${fileName}`;
+
+    const arrayBuffer = await file.arrayBuffer();
+    const { error: uploadError } = await supabase.storage
+      .from(BUCKET_NAME)
+      .upload(filePath, arrayBuffer, {
+        contentType: file.type || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      });
+
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      return c.json({ error: 'Failed to upload file', details: String(uploadError) }, 500);
+    }
+
+    // Return storage path with supabase:// prefix and file info
+    return c.json({ 
+      success: true, 
+      path: `supabase://${filePath}`,
+      fileName: file.name,
+      fileSize: file.size
+    });
+  } catch (error) {
+    console.error('Error uploading document:', error);
+    return c.json({ error: 'Failed to upload document', details: String(error) }, 500);
+  }
+});
+
+// ===== DOCUMENTS =====
+app.get('/make-server-2e8b32fc/documents', async (c) => {
+  try {
+    const documents = await kv.getByPrefix('document:');
+    return c.json({ documents: documents || [] });
+  } catch (error) {
+    console.error('Error fetching documents:', error);
+    return c.json({ error: 'Failed to fetch documents', details: String(error) }, 500);
+  }
+});
+
+app.post('/make-server-2e8b32fc/documents', async (c) => {
+  try {
+    const document = await c.req.json();
+    await kv.set(`document:${document.id}`, document);
+    return c.json(document);
+  } catch (error) {
+    console.error('Error creating document:', error);
+    return c.json({ error: 'Failed to create document', details: String(error) }, 500);
+  }
+});
+
+app.put('/make-server-2e8b32fc/documents/:id', async (c) => {
+  try {
+    const id = c.req.param('id');
+    const document = await c.req.json();
+    await kv.set(`document:${id}`, document);
+    return c.json(document);
+  } catch (error) {
+    console.error('Error updating document:', error);
+    return c.json({ error: 'Failed to update document', details: String(error) }, 500);
+  }
+});
+
+app.delete('/make-server-2e8b32fc/documents/:id', async (c) => {
+  try {
+    const id = c.req.param('id');
+    await kv.del(`document:${id}`);
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting document:', error);
+    return c.json({ error: 'Failed to delete document', details: String(error) }, 500);
+  }
+});
+
 // ===== INITIALIZE DATA =====
 app.post('/make-server-2e8b32fc/initialize', async (c) => {
   try {
@@ -399,6 +494,7 @@ app.post('/make-server-2e8b32fc/initialize', async (c) => {
     const existingMatching = await kv.getByPrefix('matching:');
     const existingQuiz = await kv.getByPrefix('quiz:');
     const existingFields = await kv.getByPrefix('field:');
+    const existingDocuments = await kv.getByPrefix('document:');
     
     const keysToDelete = [
       ...existingTopics.map((t: any) => `topic:${t.id}`),
@@ -406,6 +502,7 @@ app.post('/make-server-2e8b32fc/initialize', async (c) => {
       ...existingMatching.map((m: any) => `matching:${m.id}`),
       ...existingQuiz.map((q: any) => `quiz:${q.id}`),
       ...existingFields.map((f: any) => `field:${f.id}`),
+      ...existingDocuments.map((d: any) => `document:${d.id}`),
     ];
     
     if (keysToDelete.length > 0) {
@@ -429,6 +526,12 @@ app.post('/make-server-2e8b32fc/initialize', async (c) => {
     if (data.fields && data.fields.length > 0) {
       const fieldKeys = data.fields.map((f: any) => `field:${f.id}`);
       await kv.mset(fieldKeys, data.fields);
+    }
+    
+    // Initialize documents
+    if (data.documents && data.documents.length > 0) {
+      const documentKeys = data.documents.map((d: any) => `document:${d.id}`);
+      await kv.mset(documentKeys, data.documents);
     }
     
     return c.json({ success: true });

@@ -59,12 +59,24 @@ export type Field = {
   order: number;
 };
 
+export type Document = {
+  id: string;
+  topicId?: string; // Optional - có thể thuộc topic hoặc field
+  field?: string; // Lĩnh vực - nếu document thuộc lĩnh vực
+  category?: 'nursery' | 'kindergarten'; // Danh mục - nếu document thuộc lĩnh vực
+  title: string;
+  fileUrl: string; // URL của file Word
+  fileName: string; // Tên file gốc
+  fileSize?: number; // Kích thước file (bytes)
+};
+
 export type AppData = {
   topics: Topic[];
   videos: Video[];
   matchingExercises: MatchingExercise[];
   quizExercises: QuizExercise[];
   fields: Field[];
+  documents: Document[];
 };
 
 const initialData: AppData = {
@@ -135,6 +147,7 @@ const initialData: AppData = {
     { id: 'kf4', name: 'Lĩnh vực phát triển thẩm mỹ', category: 'kindergarten', order: 4 },
     { id: 'kf5', name: 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội', category: 'kindergarten', order: 5 },
   ],
+  documents: [],
 };
 
 type Page = 'home' | 'topics' | 'videos' | 'exercises' | 'admin-login' | 'admin-dashboard' | 'topic-detail' | 'field-detail';
@@ -171,7 +184,7 @@ export default function App() {
       setIsLoading(true);
       
       // Fetch all data in parallel
-      const [topicsRes, videosRes, matchingRes, quizRes, fieldsRes] = await Promise.all([
+      const [topicsRes, videosRes, matchingRes, quizRes, fieldsRes, documentsRes] = await Promise.all([
         fetch(`${API_URL}/topics`, {
           headers: { 'Authorization': `Bearer ${publicAnonKey}` }
         }),
@@ -187,6 +200,9 @@ export default function App() {
         fetch(`${API_URL}/fields`, {
           headers: { 'Authorization': `Bearer ${publicAnonKey}` }
         }),
+        fetch(`${API_URL}/documents`, {
+          headers: { 'Authorization': `Bearer ${publicAnonKey}` }
+        }),
       ]);
 
       const topics = await topicsRes.json();
@@ -194,6 +210,7 @@ export default function App() {
       const matching = await matchingRes.json();
       const quiz = await quizRes.json();
       const fields = await fieldsRes.json();
+      const documents = await documentsRes.json();
 
       // If no data exists, initialize with default data
       if (topics.topics.length === 0 || !fields.fields || fields.fields.length === 0) {
@@ -259,6 +276,7 @@ export default function App() {
         })),
         quizExercises: quiz.exercises || [],
         fields: fields.fields || [],
+        documents: documents.documents || [],
       });
     } catch (error) {
       console.error('Error loading data from Supabase:', error);
@@ -441,6 +459,24 @@ export default function App() {
                   return !selectedFieldCategory || !e.category;
                 }
                 const topic = appData.topics.find(t => t.id === e.topicId);
+                if (topic?.field === selectedFieldName) {
+                  if (selectedFieldCategory) {
+                    return topic.category === selectedFieldCategory;
+                  }
+                  return true;
+                }
+                return false;
+              })}
+              documents={appData.documents.filter(d => {
+                // Document thuộc field trực tiếp hoặc thuộc topic trong field
+                // Must match both field name and category
+                if (d.field === selectedFieldName) {
+                  if (selectedFieldCategory && d.category) {
+                    return d.category === selectedFieldCategory;
+                  }
+                  return !selectedFieldCategory || !d.category;
+                }
+                const topic = appData.topics.find(t => t.id === d.topicId);
                 if (topic?.field === selectedFieldName) {
                   if (selectedFieldCategory) {
                     return topic.category === selectedFieldCategory;

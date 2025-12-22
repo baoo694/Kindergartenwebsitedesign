@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Video, Brain } from 'lucide-react';
+import { Video, Brain, FileText, Download } from 'lucide-react';
 import Header from './Header';
 import MatchingGame from './MatchingGame';
 import QuizGame from './QuizGame';
-import { convertToEmbedUrl } from '../utils/videoUtils';
-import type { Video as VideoType, MatchingExercise, QuizExercise, Topic } from '../App';
+import { convertToEmbedUrl, convertSupabaseUrl } from '../utils/videoUtils';
+import { projectId } from '../utils/supabase/info';
+import type { Video as VideoType, MatchingExercise, QuizExercise, Topic, Document } from '../App';
 
 type FieldDetailProps = {
   fieldName: string;
@@ -12,6 +13,7 @@ type FieldDetailProps = {
   videos: VideoType[];
   matchingExercises: MatchingExercise[];
   quizExercises: QuizExercise[];
+  documents: Document[];
   topics: Topic[];
   navigateTo: (page: string, topicId?: string) => void;
 };
@@ -22,9 +24,13 @@ export default function FieldDetail({
   videos, 
   matchingExercises, 
   quizExercises,
+  documents,
   topics,
   navigateTo 
 }: FieldDetailProps) {
+  const getDocumentUrl = (document: Document): string => {
+    return convertSupabaseUrl(document.fileUrl, projectId);
+  };
   const [selectedVideo, setSelectedVideo] = useState<VideoType | null>(null);
   const [selectedMatchingExercise, setSelectedMatchingExercise] = useState<MatchingExercise | null>(null);
   const [selectedQuizExercise, setSelectedQuizExercise] = useState<QuizExercise | null>(null);
@@ -74,6 +80,55 @@ export default function FieldDetail({
             </div>
           )}
         </section>
+
+        {/* Documents Section */}
+        {documents.length > 0 && (
+          <section className="mb-12">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="bg-blue-100 p-3 rounded-full">
+                <FileText className="w-6 h-6 md:w-8 md:h-8 text-blue-600" />
+              </div>
+              <h2 className="text-blue-600 text-xl md:text-2xl">Tài liệu Word</h2>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+              {documents.map(document => {
+                const topic = topics.find(t => t.id === document.topicId);
+                return (
+                  <div
+                    key={document.id}
+                    className="bg-white rounded-xl p-6 shadow-lg hover:shadow-2xl transition border-l-4 border-blue-400"
+                  >
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className="bg-blue-100 p-3 rounded-lg">
+                        <FileText className="w-6 h-6 text-blue-600" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-blue-600 mb-1 font-semibold">{document.title}</h3>
+                        {topic && (
+                          <p className="text-sm text-gray-500 mb-1">Chủ đề: {topic.title}</p>
+                        )}
+                        <p className="text-xs text-gray-400">{document.fileName}</p>
+                        {document.fileSize && (
+                          <p className="text-xs text-gray-400">{(document.fileSize / 1024).toFixed(1)} KB</p>
+                        )}
+                      </div>
+                    </div>
+                    <a
+                      href={getDocumentUrl(document)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                    >
+                      <Download className="w-4 h-4" />
+                      Tải xuống
+                    </a>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* Exercises Section */}
         <section>

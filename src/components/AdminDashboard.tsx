@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { LogOut, Plus, Edit2, Trash2, Video, BookOpen, GamepadIcon, Upload, Layers } from 'lucide-react';
-import type { AppData, Topic, Video as VideoType, MatchingExercise, QuizExercise, Field } from '../App';
+import { LogOut, Plus, Edit2, Trash2, Video, BookOpen, GamepadIcon, Upload, Layers, FileText } from 'lucide-react';
+import type { AppData, Topic, Video as VideoType, MatchingExercise, QuizExercise, Field, Document } from '../App';
 import { projectId, publicAnonKey } from '../utils/supabase/info';
 import { convertToEmbedUrl, convertSupabaseUrl } from '../utils/videoUtils';
 
@@ -21,7 +21,7 @@ type AdminDashboardProps = {
   reloadData: () => Promise<void>;
 };
 
-type TabType = 'topics' | 'videos' | 'matching' | 'quiz' | 'fields';
+type TabType = 'topics' | 'videos' | 'matching' | 'quiz' | 'fields' | 'documents';
 
 const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-2e8b32fc`;
 
@@ -89,6 +89,16 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
     category: 'nursery' as 'nursery' | 'kindergarten',
   });
 
+  // Document Form
+  const [documentForm, setDocumentForm] = useState({
+    assignType: 'field' as 'topic' | 'field',
+    topicId: '',
+    field: '',
+    category: 'nursery' as 'nursery' | 'kindergarten',
+    title: '',
+  });
+  const [documentFile, setDocumentFile] = useState<File | null>(null);
+
   // Save activeTab to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('adminActiveTab', activeTab);
@@ -130,6 +140,25 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
 
     const data = await response.json();
     return data.path;
+  };
+
+  const handleUploadDocument = async (file: File): Promise<{ path: string; fileName: string; fileSize: number }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${API_URL}/upload-document`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${publicAnonKey}` },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to upload document');
+    }
+
+    const data = await response.json();
+    return { path: data.path, fileName: data.fileName, fileSize: data.fileSize };
   };
 
   const handleAddTopic = async () => {
@@ -700,6 +729,134 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
     }
   };
 
+  // Document CRUD
+  const handleAddDocument = async () => {
+    try {
+      if (!documentFile) {
+        alert('Vui lòng chọn file Word');
+        return;
+      }
+
+      setIsUploading(true);
+      
+      const uploadResult = await handleUploadDocument(documentFile);
+
+      const newDocument: Document = {
+        id: Date.now().toString(),
+        topicId: documentForm.assignType === 'topic' ? documentForm.topicId : undefined,
+        field: documentForm.assignType === 'field' ? documentForm.field : undefined,
+        category: documentForm.assignType === 'field' ? documentForm.category : undefined,
+        title: documentForm.title,
+        fileUrl: uploadResult.path,
+        fileName: uploadResult.fileName,
+        fileSize: uploadResult.fileSize,
+      };
+
+      const response = await fetch(`${API_URL}/documents`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${publicAnonKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newDocument),
+      });
+
+      if (!response.ok) throw new Error('Failed to add document');
+
+      await reloadData();
+      setShowAddModal(false);
+      setDocumentForm({ assignType: 'field', topicId: '', field: '', category: 'nursery', title: '' });
+      setDocumentFile(null);
+    } catch (error) {
+      console.error('Error adding document:', error);
+      alert('Lỗi khi thêm tài liệu: ' + (error as Error).message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleEditDocument = (document: Document) => {
+    setEditingItem(document);
+    setDocumentForm({
+      assignType: document.topicId ? 'topic' : 'field',
+      topicId: document.topicId || '',
+      field: document.field || '',
+      category: document.category || 'nursery',
+      title: document.title,
+    });
+    setDocumentFile(null);
+    setShowAddModal(true);
+  };
+
+  const handleUpdateDocument = async () => {
+    try {
+      setIsUploading(true);
+
+      let fileUrl = editingItem.fileUrl;
+      let fileName = editingItem.fileName;
+      let fileSize = editingItem.fileSize;
+
+      // Upload new file if selected
+      if (documentFile) {
+        const uploadResult = await handleUploadDocument(documentFile);
+        fileUrl = uploadResult.path;
+        fileName = uploadResult.fileName;
+        fileSize = uploadResult.fileSize;
+      }
+
+      const updatedDocument: Document = {
+        ...editingItem,
+        topicId: documentForm.assignType === 'topic' ? documentForm.topicId : undefined,
+        field: documentForm.assignType === 'field' ? documentForm.field : undefined,
+        category: documentForm.assignType === 'field' ? documentForm.category : undefined,
+        title: documentForm.title,
+        fileUrl,
+        fileName,
+        fileSize,
+      };
+
+      const response = await fetch(`${API_URL}/documents/${editingItem.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${publicAnonKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updatedDocument),
+      });
+
+      if (!response.ok) throw new Error('Failed to update document');
+
+      await reloadData();
+      setShowAddModal(false);
+      setEditingItem(null);
+      setDocumentForm({ assignType: 'field', topicId: '', field: '', category: 'nursery', title: '' });
+      setDocumentFile(null);
+    } catch (error) {
+      console.error('Error updating document:', error);
+      alert('Lỗi khi cập nhật tài liệu: ' + (error as Error).message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDeleteDocument = async (id: string) => {
+    if (!confirm('Bạn có chắc chắn muốn xóa tài liệu này?')) return;
+
+    try {
+      const response = await fetch(`${API_URL}/documents/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${publicAnonKey}` },
+      });
+
+      if (!response.ok) throw new Error('Failed to delete document');
+
+      await reloadData();
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      alert('Lỗi khi xóa tài liệu');
+    }
+  };
+
   const openAddModal = () => {
     setEditingItem(null);
     setShowAddModal(true);
@@ -707,6 +864,10 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
     setVideoFile(null);
     setThumbnailPreview('');
     setVideoPreview('');
+    setDocumentFile(null);
+    if (activeTab === 'documents') {
+      setDocumentForm({ assignType: 'field', topicId: '', field: '', category: 'nursery', title: '' });
+    }
   };
 
   // Update previews when files or URLs change
@@ -811,6 +972,15 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
           >
             <Layers className="w-5 h-5" />
             Lĩnh vực
+          </button>
+          <button
+            onClick={() => setActiveTab('documents')}
+            className={`flex items-center gap-2 px-6 py-3 border-b-2 transition whitespace-nowrap ${
+              activeTab === 'documents' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-600'
+            }`}
+          >
+            <FileText className="w-5 h-5" />
+            Tài liệu Word
           </button>
         </div>
 
@@ -1049,6 +1219,74 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
             )}
           </div>
         )}
+
+        {/* Documents Tab */}
+        {activeTab === 'documents' && (
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+            {(!appData.documents || appData.documents.length === 0) ? (
+              <div className="px-6 py-12 text-center">
+                <p className="text-gray-600">Chưa có tài liệu nào</p>
+              </div>
+            ) : (
+              <table className="w-full">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="px-6 py-3 text-left">Tiêu đề</th>
+                    <th className="px-6 py-3 text-left">File</th>
+                    <th className="px-6 py-3 text-left">Gán vào</th>
+                    <th className="px-6 py-3 text-right">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(appData.documents || []).map((document) => {
+                    const topic = document.topicId ? appData.topics.find(t => t.id === document.topicId) : null;
+                    return (
+                      <tr key={document.id} className="border-t hover:bg-gray-50">
+                        <td className="px-6 py-4">{document.title}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-blue-600" />
+                            <span className="text-sm text-gray-600">{document.fileName}</span>
+                            {document.fileSize && (
+                              <span className="text-xs text-gray-400">
+                                ({(document.fileSize / 1024).toFixed(1)} KB)
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          {topic ? (
+                            <span className="text-sm text-gray-600">Chủ đề: {topic.title}</span>
+                          ) : document.field ? (
+                            <span className="text-sm text-gray-600">
+                              {document.field} ({document.category === 'nursery' ? 'Nhà trẻ' : 'Mẫu giáo'})
+                            </span>
+                          ) : (
+                            <span className="text-sm text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <button
+                            onClick={() => handleEditDocument(document)}
+                            className="text-blue-600 hover:text-blue-800 p-2"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteDocument(document.id)}
+                            className="text-red-600 hover:text-red-800 p-2"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Add/Edit Modal */}
@@ -1056,7 +1294,7 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl max-w-2xl w-full p-8 my-8 max-h-[90vh] overflow-y-auto">
             <h2 className="text-gray-800 mb-6">
-              {editingItem ? 'Chỉnh sửa' : 'Thêm mới'} {activeTab === 'topics' ? 'Chủ đề' : activeTab === 'videos' ? 'Video' : activeTab === 'matching' ? 'Bài ghép hình' : activeTab === 'quiz' ? 'Bài trắc nghiệm' : 'Lĩnh vực'}
+              {editingItem ? 'Chỉnh sửa' : 'Thêm mới'} {activeTab === 'topics' ? 'Chủ đề' : activeTab === 'videos' ? 'Video' : activeTab === 'matching' ? 'Bài ghép hình' : activeTab === 'quiz' ? 'Bài trắc nghiệm' : activeTab === 'fields' ? 'Lĩnh vực' : 'Tài liệu Word'}
             </h2>
 
             {/* Topic Form */}
@@ -1863,6 +2101,135 @@ export default function AdminDashboard({ appData, setAppData, onLogout, navigate
                       setFieldForm({ name: '', category: 'nursery' });
                     }}
                     className="flex-1 bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600"
+                  >
+                    Hủy
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Document Form */}
+            {activeTab === 'documents' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block mb-2">Gán vào</label>
+                  <select
+                    value={documentForm.assignType}
+                    onChange={(e) => setDocumentForm({ ...documentForm, assignType: e.target.value as 'topic' | 'field', topicId: '', field: '' })}
+                    className="w-full px-4 py-2 border rounded-lg"
+                  >
+                    <option value="topic">Chủ đề</option>
+                    <option value="field">Lĩnh vực</option>
+                  </select>
+                </div>
+                {documentForm.assignType === 'topic' && (
+                  <div>
+                    <label className="block mb-2">Chủ đề</label>
+                    <select
+                      value={documentForm.topicId}
+                      onChange={(e) => setDocumentForm({ ...documentForm, topicId: e.target.value })}
+                      className="w-full px-4 py-2 border rounded-lg"
+                    >
+                      <option value="">Chọn chủ đề</option>
+                      {appData.topics.map(topic => (
+                        <option key={topic.id} value={topic.id}>{topic.title} ({topic.category === 'nursery' ? 'Nhà trẻ' : 'Mẫu giáo'})</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                {documentForm.assignType === 'field' && (
+                  <>
+                    <div>
+                      <label className="block mb-2">Loại</label>
+                      <select
+                        value={documentForm.category}
+                        onChange={(e) => setDocumentForm({ ...documentForm, category: e.target.value as 'nursery' | 'kindergarten', field: '' })}
+                        className="w-full px-4 py-2 border rounded-lg"
+                      >
+                        <option value="nursery">Nhà trẻ</option>
+                        <option value="kindergarten">Mẫu giáo</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block mb-2">Lĩnh vực phát triển</label>
+                      <select
+                        value={documentForm.field}
+                        onChange={(e) => setDocumentForm({ ...documentForm, field: e.target.value })}
+                        className="w-full px-4 py-2 border rounded-lg"
+                      >
+                        <option value="">Chọn lĩnh vực</option>
+                        {(appData.fields || [])
+                          .filter(f => f.category === documentForm.category)
+                          .sort((a, b) => a.order - b.order)
+                          .map(field => (
+                            <option key={field.id} value={field.name}>{field.name}</option>
+                          ))}
+                      </select>
+                    </div>
+                  </>
+                )}
+                <div>
+                  <label className="block mb-2">Tiêu đề</label>
+                  <input
+                    type="text"
+                    value={documentForm.title}
+                    onChange={(e) => setDocumentForm({ ...documentForm, title: e.target.value })}
+                    className="w-full px-4 py-2 border rounded-lg"
+                    placeholder="VD: Tài liệu hướng dẫn..."
+                  />
+                </div>
+                <div>
+                  <label className="block mb-2">File Word (.doc, .docx)</label>
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="file"
+                      accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setDocumentFile(file);
+                        }
+                      }}
+                      className="hidden"
+                      id="document-upload"
+                    />
+                    <label
+                      htmlFor="document-upload"
+                      className="cursor-pointer bg-purple-100 text-purple-700 px-4 py-2 rounded-lg hover:bg-purple-200 transition flex items-center gap-2"
+                      title="Upload file Word"
+                    >
+                      <Upload className="w-5 h-5" />
+                      {documentFile ? documentFile.name : editingItem ? (editingItem as Document).fileName : 'Chọn file'}
+                    </label>
+                  </div>
+                  {!documentFile && editingItem && (
+                    <p className="text-sm text-gray-500 mt-2">File hiện tại: {(editingItem as Document).fileName}</p>
+                  )}
+                </div>
+                <div className="flex gap-4">
+                  <button
+                    onClick={editingItem ? handleUpdateDocument : handleAddDocument}
+                    disabled={isUploading}
+                    className="flex-1 bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                  >
+                    {isUploading ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Đang upload...
+                      </span>
+                    ) : (
+                      editingItem ? 'Cập nhật' : 'Thêm'
+                    )}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowAddModal(false);
+                      setEditingItem(null);
+                      setDocumentForm({ assignType: 'field', topicId: '', field: '', category: 'nursery', title: '' });
+                      setDocumentFile(null);
+                    }}
+                    disabled={isUploading}
+                    className="flex-1 bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 disabled:opacity-50"
                   >
                     Hủy
                   </button>
