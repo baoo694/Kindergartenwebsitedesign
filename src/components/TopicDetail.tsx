@@ -1,16 +1,18 @@
-import { ArrowLeft, Video, GamepadIcon, Play } from 'lucide-react';
+import { ArrowLeft, Video, GamepadIcon, Play, FileText, Download } from 'lucide-react';
 import { useState } from 'react';
 import Header from './Header';
-import type { Topic, Video as VideoType, MatchingExercise, QuizExercise } from '../App';
+import type { Topic, Video as VideoType, MatchingExercise, QuizExercise, Document } from '../App';
 import MatchingGame from './MatchingGame';
 import QuizGame from './QuizGame';
-import { convertToEmbedUrl } from '../utils/videoUtils';
+import { convertToEmbedUrl, convertSupabaseUrl } from '../utils/videoUtils';
+import { projectId } from '../utils/supabase/info';
 
 type TopicDetailProps = {
   topic: Topic;
   videos: VideoType[];
   matchingExercises: MatchingExercise[];
   quizExercises: QuizExercise[];
+  documents: Document[];
   navigateTo: (page: string) => void;
 };
 
@@ -19,8 +21,12 @@ export default function TopicDetail({
   videos,
   matchingExercises,
   quizExercises,
+  documents,
   navigateTo,
 }: TopicDetailProps) {
+  const getDocumentUrl = (document: Document): string => {
+    return convertSupabaseUrl(document.fileUrl, projectId);
+  };
   const [activeTab, setActiveTab] = useState<'skill' | 'emotion'>('skill');
   const [selectedVideo, setSelectedVideo] = useState<VideoType | null>(null);
   const [selectedMatchingExercise, setSelectedMatchingExercise] = useState<MatchingExercise | null>(null);
@@ -115,6 +121,46 @@ export default function TopicDetail({
                 </div>
               )}
             </section>
+
+            {/* Documents Section */}
+            {documents.length > 0 && (
+              <section className="mb-8 md:mb-12">
+                <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6">
+                  <FileText className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />
+                  <h2 className="text-blue-600 text-lg md:text-2xl">Tài liệu Word</h2>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                  {documents.map(document => (
+                    <div
+                      key={document.id}
+                      className="bg-white rounded-xl p-4 md:p-6 shadow-lg hover:shadow-2xl transition border-l-4 border-blue-400"
+                    >
+                      <div className="flex items-start gap-3 mb-3">
+                        <div className="bg-blue-100 p-3 rounded-lg">
+                          <FileText className="w-5 h-5 md:w-6 md:h-6 text-blue-600" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-blue-600 mb-1 font-semibold text-sm md:text-base">{document.title}</h3>
+                          <p className="text-xs text-gray-400">{document.fileName}</p>
+                          {document.fileSize && (
+                            <p className="text-xs text-gray-400">{(document.fileSize / 1024).toFixed(1)} KB</p>
+                          )}
+                        </div>
+                      </div>
+                      <a
+                        href={getDocumentUrl(document)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm md:text-base"
+                      >
+                        <Download className="w-4 h-4" />
+                        Tải xuống
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {/* Exercises Section */}
             <section>

@@ -386,6 +386,7 @@ export default function App() {
               videos={appData.videos.filter(v => v.topicId === selectedTopicId)}
               matchingExercises={appData.matchingExercises.filter(e => e.topicId === selectedTopicId)}
               quizExercises={appData.quizExercises.filter(e => e.topicId === selectedTopicId)}
+              documents={appData.documents.filter(d => d.topicId === selectedTopicId)}
               navigateTo={navigateTo}
             />
           )}
