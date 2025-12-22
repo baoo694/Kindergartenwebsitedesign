@@ -158,6 +158,7 @@ export default function App() {
   });
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
   const [selectedFieldName, setSelectedFieldName] = useState<string | null>(null);
+  const [selectedFieldCategory, setSelectedFieldCategory] = useState<'nursery' | 'kindergarten' | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Load data from Supabase
@@ -294,9 +295,17 @@ export default function App() {
   const navigateTo = (page: Page, topicId?: string) => {
     setCurrentPage(page);
     if (topicId) {
-      // If navigating to field-detail, topicId is actually the field name
+      // If navigating to field-detail, topicId is actually the field name and category (format: "fieldName|category")
       if (page === 'field-detail') {
-        setSelectedFieldName(topicId);
+        const parts = topicId.split('|');
+        if (parts.length === 2) {
+          setSelectedFieldName(parts[0]);
+          setSelectedFieldCategory(parts[1] as 'nursery' | 'kindergarten');
+        } else {
+          // Fallback for old format (just field name)
+          setSelectedFieldName(topicId);
+          setSelectedFieldCategory(null);
+        }
       } else {
         setSelectedTopicId(topicId);
       }
@@ -375,24 +384,70 @@ export default function App() {
           {currentPage === 'field-detail' && selectedFieldName && (
             <FieldDetail
               fieldName={selectedFieldName}
-              topics={appData.topics.filter(t => t.field === selectedFieldName)}
+              fieldCategory={selectedFieldCategory}
+              topics={appData.topics.filter(t => {
+                // Filter topics by field name and category
+                if (t.field !== selectedFieldName) return false;
+                if (selectedFieldCategory) {
+                  return t.category === selectedFieldCategory;
+                }
+                return true;
+              })}
               videos={appData.videos.filter(v => {
                 // Video thuộc field trực tiếp hoặc thuộc topic trong field
-                if (v.field === selectedFieldName) return true;
+                // Must match both field name and category
+                if (v.field === selectedFieldName) {
+                  // If video has category, it must match
+                  if (selectedFieldCategory && v.category) {
+                    return v.category === selectedFieldCategory;
+                  }
+                  // If no category specified, accept it (for backward compatibility)
+                  return !selectedFieldCategory || !v.category;
+                }
                 const topic = appData.topics.find(t => t.id === v.topicId);
-                return topic?.field === selectedFieldName;
+                if (topic?.field === selectedFieldName) {
+                  if (selectedFieldCategory) {
+                    return topic.category === selectedFieldCategory;
+                  }
+                  return true;
+                }
+                return false;
               })}
               matchingExercises={appData.matchingExercises.filter(e => {
                 // Exercise thuộc field trực tiếp hoặc thuộc topic trong field
-                if (e.field === selectedFieldName) return true;
+                // Must match both field name and category
+                if (e.field === selectedFieldName) {
+                  if (selectedFieldCategory && e.category) {
+                    return e.category === selectedFieldCategory;
+                  }
+                  return !selectedFieldCategory || !e.category;
+                }
                 const topic = appData.topics.find(t => t.id === e.topicId);
-                return topic?.field === selectedFieldName;
+                if (topic?.field === selectedFieldName) {
+                  if (selectedFieldCategory) {
+                    return topic.category === selectedFieldCategory;
+                  }
+                  return true;
+                }
+                return false;
               })}
               quizExercises={appData.quizExercises.filter(e => {
                 // Exercise thuộc field trực tiếp hoặc thuộc topic trong field
-                if (e.field === selectedFieldName) return true;
+                // Must match both field name and category
+                if (e.field === selectedFieldName) {
+                  if (selectedFieldCategory && e.category) {
+                    return e.category === selectedFieldCategory;
+                  }
+                  return !selectedFieldCategory || !e.category;
+                }
                 const topic = appData.topics.find(t => t.id === e.topicId);
-                return topic?.field === selectedFieldName;
+                if (topic?.field === selectedFieldName) {
+                  if (selectedFieldCategory) {
+                    return topic.category === selectedFieldCategory;
+                  }
+                  return true;
+                }
+                return false;
               })}
               navigateTo={navigateTo}
             />

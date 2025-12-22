@@ -46,6 +46,7 @@ export default function TopicsPage({ topics, fields, navigateTo }: TopicsPagePro
   // Nhóm chủ đề Nhà trẻ theo lĩnh vực - hiển thị tất cả 4 lĩnh vực
   const nurseryTopicsByField = nurseryFieldsToUse.map(field => ({
     field: field.name,
+    category: field.category,
     topics: nurseryTopics
       .filter(t => t.field === field.name)
       .sort((a, b) => (a.order || 0) - (b.order || 0))
@@ -54,6 +55,7 @@ export default function TopicsPage({ topics, fields, navigateTo }: TopicsPagePro
   // Nhóm chủ đề Mẫu giáo theo lĩnh vực - hiển thị tất cả 5 lĩnh vực
   const kindergartenTopicsByField = kindergartenFieldsToUse.map(field => ({
     field: field.name,
+    category: field.category,
     topics: kindergartenTopics
       .filter(t => t.field === field.name)
       .sort((a, b) => (a.order || 0) - (b.order || 0))
@@ -150,7 +152,7 @@ export default function TopicsPage({ topics, fields, navigateTo }: TopicsPagePro
                       group.field !== 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội' && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
                           <div
-                            onClick={() => navigateTo('field-detail', group.field)}
+                            onClick={() => navigateTo('field-detail', `${group.field}|${group.category}`)}
                             className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl p-5 md:p-6 shadow-md hover:shadow-2xl transition cursor-pointer border-l-4 border-purple-400 hover:scale-105 active:scale-95 group"
                           >
                             <div className="flex items-center gap-3 mb-2">
@@ -163,7 +165,7 @@ export default function TopicsPage({ topics, fields, navigateTo }: TopicsPagePro
                           </div>
 
                           <div
-                            onClick={() => navigateTo('field-detail', group.field)}
+                            onClick={() => navigateTo('field-detail', `${group.field}|${group.category}`)}
                             className="bg-gradient-to-br from-green-50 to-teal-50 rounded-xl p-5 md:p-6 shadow-md hover:shadow-2xl transition cursor-pointer border-l-4 border-green-400 hover:scale-105 active:scale-95 group"
                           >
                             <div className="flex items-center gap-3 mb-2">
@@ -243,7 +245,7 @@ export default function TopicsPage({ topics, fields, navigateTo }: TopicsPagePro
                       group.field !== 'Lĩnh vực phát triển tình cảm - kỹ năng xã hội' && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
                           <div
-                            onClick={() => navigateTo('field-detail', group.field)}
+                            onClick={() => navigateTo('field-detail', `${group.field}|${group.category}`)}
                             className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl p-5 md:p-6 shadow-md hover:shadow-2xl transition cursor-pointer border-l-4 border-purple-400 hover:scale-105 active:scale-95 group"
                           >
                             <div className="flex items-center gap-3 mb-2">
@@ -256,7 +258,7 @@ export default function TopicsPage({ topics, fields, navigateTo }: TopicsPagePro
                           </div>
 
                           <div
-                            onClick={() => navigateTo('field-detail', group.field)}
+                            onClick={() => navigateTo('field-detail', `${group.field}|${group.category}`)}
                             className="bg-gradient-to-br from-green-50 to-teal-50 rounded-xl p-5 md:p-6 shadow-md hover:shadow-2xl transition cursor-pointer border-l-4 border-green-400 hover:scale-105 active:scale-95 group"
                           >
                             <div className="flex items-center gap-3 mb-2">

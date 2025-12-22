@@ -8,6 +8,7 @@ import type { Video as VideoType, MatchingExercise, QuizExercise, Topic } from '
 
 type FieldDetailProps = {
   fieldName: string;
+  fieldCategory?: 'nursery' | 'kindergarten' | null;
   videos: VideoType[];
   matchingExercises: MatchingExercise[];
   quizExercises: QuizExercise[];
@@ -16,7 +17,8 @@ type FieldDetailProps = {
 };
 
 export default function FieldDetail({ 
-  fieldName, 
+  fieldName,
+  fieldCategory,
   videos, 
   matchingExercises, 
   quizExercises,
