@@ -442,7 +442,22 @@ app.post('/make-server-2e8b32fc/upload-document', async (c) => {
 app.get('/make-server-2e8b32fc/documents', async (c) => {
   try {
     const documents = await kv.getByPrefix('document:');
-    return c.json({ documents: documents || [] });
+    // Get signed URLs for documents if they are stored in Supabase
+    const documentsWithSignedUrls = await Promise.all(
+      documents.map(async (document: any) => {
+        if (document.fileUrl && document.fileUrl.startsWith('supabase://')) {
+          const path = document.fileUrl.replace('supabase://', '');
+          const { data } = await supabase.storage
+            .from(BUCKET_NAME)
+            .createSignedUrl(path, 3600);
+          if (data?.signedUrl) {
+            document.fileUrl = data.signedUrl;
+          }
+        }
+        return document;
+      })
+    );
+    return c.json({ documents: documentsWithSignedUrls || [] });
   } catch (error) {
     console.error('Error fetching documents:', error);
     return c.json({ error: 'Failed to fetch documents', details: String(error) }, 500);
@@ -475,6 +490,12 @@ app.put('/make-server-2e8b32fc/documents/:id', async (c) => {
 app.delete('/make-server-2e8b32fc/documents/:id', async (c) => {
   try {
     const id = c.req.param('id');
+    const document = await kv.get(`document:${id}`);
+    // Delete associated file from storage
+    if (document && document.fileUrl && document.fileUrl.startsWith('supabase://')) {
+      const path = document.fileUrl.replace('supabase://', '');
+      await supabase.storage.from(BUCKET_NAME).remove([path]);
+    }
     await kv.del(`document:${id}`);
     return c.json({ success: true });
   } catch (error) {
